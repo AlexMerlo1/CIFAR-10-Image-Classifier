@@ -3,7 +3,7 @@
 ## Goal  
 Predict the class of an image in the CIFAR-10 with at least 75% test accuracy.
 
-## Dataset: Cifar-10
+## Dataset: CIFAR-10
 60000 32x32 RGB images in 10 classes
 
 ## Core Layers (From Scratch)
@@ -43,25 +43,25 @@ Evaluate the timpact of different optimization & regularization techniques
 
 ### Learning Rate Comparisons
 
-**Baseline:** Constant learning rate  
-$$
-\eta_t = \eta_0
-$$
-**Step Decay:** Reduce learning rate by fixed factor at predefined intervals  
-$$
-\eta_t = \eta_0 \cdot \gamma^{\left\lfloor \frac{t}{s} \right\rfloor}
-$$
-**Cosine Learning Rate Decay:** Follows cosine curve from initial value down to near 0  
-$$
-\eta_t = \frac{\eta_0}{2}\left(1 + \cos\left(\frac{\pi t}{T}\right)\right)
-$$
-### Regularization
-**L2:** Add additional term to loss function 
-$$
-J(\theta) = \frac{1}{m} \sum_{i=1}^{m} \mathcal{L}\big(\hat{y}^{(i)},y^{(i)} \big)
-+ \frac{\lambda}{2m} \sum_{j=1}^{n} w_j^2
-$$
-**Dropout:** Randomly stop a select percent of nodes from each layer from updating paramaters.  
+**Baseline:** Constant learning rate
+
+$$\alpha_t = \alpha_0$$
+
+**Step Decay:** Reduce learning rate by fixed factor at predefined intervals
+
+$$\alpha_t = \alpha_0 \cdot \gamma^{\left\lfloor \frac{t}{s} \right\rfloor}$$
+
+**Cosine Learning Rate Decay:** Follows cosine curve from initial value down to near 0
+
+$$\alpha_t = \frac{\alpha_0}{2}\left(1 + \cos\left(\frac{\pi t}{T}\right)\right)$$
+
+## Regularization
+
+**L2:** Add additional term to loss function
+
+$$J(\theta) = \frac{1}{m} \sum_{i=1}^{m} \mathcal{L}\big(\hat{y}^{(i)},y^{(i)}\big) + \frac{\lambda}{2m} \sum_{j=1}^{n} w_j^2$$
+
+**Dropout:** Randomly stop a select percent of nodes from each layer from updating parameters.
 
 Evaluate different dropout rates:
 - p = 0.0 (baseline)
