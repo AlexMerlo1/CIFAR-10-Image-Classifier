@@ -1,9 +1,10 @@
 class Model:
-  def __init__(self, layers, optimizer=None, regularization=None, augmentation=None):
+  def __init__(self, layers, optimizer=None, regularization=None, augmentation=None, batch_size):
     self.layers = layers
     # self.optimizer = optimizer if optimizer else SGD(lr=0.01)
     # self.regularization = regularization
     # self.augmentation = augmentation
+    # self.batch_size = batch_size
 
 class Flatten:
     """
@@ -25,7 +26,7 @@ class Linear:
     Output: (batch_size, out_features)
     """
 
-    def __init__(self, in_features, out_features, bias=True):
+    def __init__(self, in_A, out_A, bias=True):
         self.in_features = in_features
         self.out_features = out_features
         self.bias_enabled = bias
