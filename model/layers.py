@@ -26,8 +26,7 @@ class Linear(PrjModel):
         self.input = input
         self.no_neurons = no_neurons
         self.activation = activation
-        self.name = name
-        self.curr_method = curr_method
+        self.name = layer_name
         self.weights = None
         self.bias = None
 
