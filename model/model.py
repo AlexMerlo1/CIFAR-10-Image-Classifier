@@ -1,3 +1,29 @@
+import torch
+import torchvision
+
+@staticmethod
+def _initialize_layers(layers_dict):
+    layers = []
+    for name, contructor in layers_dict:
+        
+    """
+    """
+    return layers
+
+
+class PrjModel:
+    #init innit?
+    def __init__(self, layers_dict, optimizer=None, regularization=None, augmentation=None, batch_size)
+    self.layers = _initialize_layers(layers_dict) #returns list of layer objects initialized based on config. 
+
+
+
+
+
+
+
+
+
 """
 Baseline Model Design:
 

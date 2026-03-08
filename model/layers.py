@@ -1,10 +1,4 @@
-class Model:
-  def __init__(self, layers, optimizer=None, regularization=None, augmentation=None, batch_size):
-    self.layers = layers
-    # self.optimizer = optimizer if optimizer else SGD(lr=0.01)
-    # self.regularization = regularization
-    # self.augmentation = augmentation
-    # self.batch_size = batch_size
+from model import PrjModel
 
 class Flatten:
     """
@@ -19,27 +13,40 @@ class Flatten:
         pass
 
 
-class Linear:
+class Linear(PrjModel):
     """
     Fully connected layer: output = x @ W + b
-    Input:  (batch_size, in_features)
-    Output: (batch_size, out_features)
+    Input:  in activations (A-1)
+    Output: out activations (A)
     """
 
-    def __init__(self, in_A, out_A, bias=True):
-        self.in_features = in_features
-        self.out_features = out_features
-        self.bias_enabled = bias
-        self.weights = None       # (in_features, out_features) - Random initialization
-        self.bias = None          # (1, out_features)
-        self.grad_weights = None
-        self.grad_bias = None
+    def __init__(self, input, layer_name, no_neurons, activation):
+        #may need to know if it is the output layer, input layer, or hidden layer. Not sure. 
+        #discuss best method to grab model values (batch_size, others)
+        self.input = input
+        self.no_neurons = no_neurons
+        self.activation = activation
+        self.name = name
+        self.curr_method = curr_method
+        self.weights = None
+        self.bias = None
+
 
     def forward(self, x):
+        #initialize containers
+        A = None #update with correct shape
+        Z = None #update with correct shape
         pass
 
     def backward(self, grad):
+        #most likely will change to reflect autograd capability
+        dw = None
+        db = None
+        da = None
+        db = None
         pass
+
+    
 
 
 class Conv2d:
@@ -67,46 +74,5 @@ class Conv2d:
         pass
 
 
-class ReLU:
-    """
-    ReLU activation: f(x) = max(0, x)
-    Input/Output: same shape as input
-    """
-
-    def forward(self, x):
-        pass
-
-    def backward(self, grad):
-        pass
 
 
-class Softmax:
-    """
-    Softmax activation: f(x_i) = exp(x_i) / sum(exp(x))
-    Applied along class dimension (axis=1).
-    Input/Output: (batch_size, num_classes)
-    """
-
-    def forward(self, x):
-        pass
-
-    def backward(self, grad):
-        pass
-
-
-class Dropout:
-    """
-    Randomly zeroes out neurons during training with probability `rate`.
-    Scales remaining activations by 1 / (1 - rate) to preserve expected values.
-    Input/Output: same shape as input
-    """
-
-    def __init__(self, rate=0.0):
-        self.rate = rate
-        self.mask = None
-
-    def forward(self, x, training=True):
-        pass
-
-    def backward(self, grad):
-        pass
