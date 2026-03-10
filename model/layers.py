@@ -1,10 +1,4 @@
-class Model:
-  def __init__(self, layers, optimizer=None, regularization=None, augmentation=None):
-    self.layers = layers
-    # self.optimizer = optimizer if optimizer else SGD(lr=0.01)
-    # self.regularization = regularization
-    # self.augmentation = augmentation
-
+import torch
 class Flatten:
     """
     Flattens spatial dimensions into a 1D feature vector per sample.
@@ -28,16 +22,27 @@ class Linear:
     def __init__(self, in_features, out_features, bias=True):
         self.in_features = in_features
         self.out_features = out_features
-        self.bias_enabled = bias
-        self.weights = None       # (in_features, out_features) - Random initialization
-        self.bias = None          # (1, out_features)
-        self.grad_weights = None
-        self.grad_bias = None
+
+        # Initialize weights with small random numbers
+        self.weights = torch.randn(in_features, out_features) * (1.0 / in_features**0.5)
+        
+        # Initialize bias
+        self.bias = torch.zeros(1, out_features)
+
+        # gradient placeholders to be used for backprop
+        self.grad_weights = torch.zeros_like(self.weights)
+        self.grad_bias = torch.zeros_like(self.bias)
 
     def forward(self, x):
-        pass
+        self.x = x # Used for backprop
+        # Z[L] = W[L] * x + B[L] 
+        # Output Z[L] To be used in activation layer or Softmax
+        return  self.x @ self.weights + self.bias
 
     def backward(self, grad):
+        # Store calculated gradiant for backprop 
+        # self.grad_weights = 
+        # self.grad_bias =
         pass
 
 
