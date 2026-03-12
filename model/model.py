@@ -57,9 +57,9 @@ Usage:
 # Baseline
 Model(
     layers=[
-        Conv2d(in_channels=3, out_channels=32, kernel_size=3, padding=1),
-        ReLU(),
-        Flatten(),
+        CNN(in_channels=3, out_channels=32, kernel_size=3, padding=1), 
+        ReLU(), 
+        A Flatten(), 
         Linear(in_features=32*32*32, out_features=256),
         ReLU(),
         Linear(in_features=256, out_features=10),
@@ -84,3 +84,27 @@ Model(
     augmentation=Augment(horizontal_flip=True, rotation_degrees=15)
 )
 """
+class Model:
+    def __init__(self, layers, optimizer=None, regularization=None, augmentation=None):
+        self.layers = layers
+        # self.optimizer = optimizer if optimizer else SGD(lr=0.01)
+        # self.regularization = regularization
+        # self.augmentation = augmentation
+
+    def forward():
+        # Perform .forward for every layer
+        # Layer1.forward -> layer2.forward ...
+
+        pass
+    def backward():
+        # Perform .backward for every layer
+        # Layer4.backward / Update gradiant -> Layer3.backward ...
+        pass
+
+    def train(self, train_loader, epochs=10):
+        # Flatten
+        # Forward pass of all layers
+        # Backward pass of all layers
+        
+        print("Now training with layers", self.layers)
+        print("Using", train_loader)
