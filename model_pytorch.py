@@ -20,6 +20,38 @@ output size = floor((n + 2P - K) / S) + 1
 
 # Other parameters can be included but optional
 """
+#activations
+class ReLU:
+    def __init__(self, Z):
+        self.Z = Z
+
+class SoftMax:
+    def __init__(self, Z):
+        self.Z = Z
+
+class Flatten:
+    def __init__(self, Z):
+        self.Z = Z
+    
+#convolutional layer
+class Conv2D:
+    def __init__(self, in_channels, out_channels, kernel_size, stride, padding, H_in, W_in):
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+        self.kernel_size = kernel_size
+        self.stride = stride
+        self.padding = padding
+        self.H_in = H_in
+        self.W_in = W_in
+
+#linear
+class Linear:
+    def __init__(self, in_features, out_features):
+        self.in_features = in_features
+        self.out_features = out_features
+
+
+
 
 # Conv2D hyperparameters
 in_channels = 3
