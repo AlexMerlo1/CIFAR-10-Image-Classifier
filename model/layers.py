@@ -1,9 +1,50 @@
-class Model:
-  def __init__(self, layers, optimizer=None, regularization=None, augmentation=None):
-    self.layers = layers
-    # self.optimizer = optimizer if optimizer else SGD(lr=0.01)
-    # self.regularization = regularization
-    # self.augmentation = augmentation
+import torch
+import torch.nn as nn
+import math
+
+class Conv2d(nn.Module):
+    """
+    2D Convolutional layer.
+    Input X:  (batch_size, in_channels, H, W)
+    Output: (batch_size, out_channels, H_out, W_out)
+
+    Forward
+
+    FOR EVERY IMAGE
+    Slide filter matrix across X[i]
+    Element-wise multipication
+    Sum all elements and assign value in output matrix add bias
+    """
+    
+    def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0):
+        super().__init__()
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+        self.kernel_size = kernel_size
+        self.stride = stride
+        self.padding = padding
+        # Initialize image/filter weights to small random values
+        self.weights = nn.Parameter(
+            torch.randn(out_channels, in_channels, kernel_size, kernel_size) *
+            math.sqrt(2 / (in_channels * kernel_size * kernel_size))
+        ) # (out_channels, in_channels, kernel_size, kernel_size) 
+        self.bias = nn.Parameter(torch.zeros(out_channels))
+        
+    def forward(self, x):
+        batch_size, in_channels, H, W = x.shape
+
+        # Get output size 
+        H_out = math.floor((H + 2*self.padding - self.kernel_size) / self.stride) + 1
+        W_out = math.floor((W + 2*self.padding - self.kernel_size) / self.stride) + 1
+
+        # Initialize output matrix
+        final_mat = torch.zeros(batch_size, self.out_channels, H_out, W_out)
+
+        # filter_values = 
+        return x
+    def backward(self, grad):
+        torch.autograd.backward()
+
 
 class Flatten:
     """
@@ -41,30 +82,6 @@ class Linear:
         pass
 
 
-class Conv2d:
-    """
-    2D Convolutional layer.
-    Input:  (batch_size, in_channels, H, W)
-    Output: (batch_size, out_channels, H_out, W_out)
-    """
-
-    def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0):
-        self.in_channels = in_channels
-        self.out_channels = out_channels
-        self.kernel_size = kernel_size
-        self.stride = stride
-        self.padding = padding
-        self.weights = None       # (out_channels, in_channels, kernel_size, kernel_size) - He initialization
-        self.bias = None          # (out_channels,)
-        self.grad_weights = None
-        self.grad_bias = None
-
-    def forward(self, x):
-        pass
-
-    def backward(self, grad):
-        pass
-
 
 class ReLU:
     """
@@ -87,6 +104,7 @@ class Softmax:
     """
 
     def forward(self, x):
+
         pass
 
     def backward(self, grad):
