@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import math
+import numpy as np
 
 class Conv2d(nn.Module):
     """
@@ -97,17 +98,21 @@ class Linear(nn.Module):
         return Z
 
 
-class ReLU:
+class ReLU(nn.Module):
     """
     ReLU activation: f(x) = max(0, x)
     Input/Output: same shape as input
+    Using zeros_like to keep tensors on the same device (GPU/CPU)
     """
+    def __init__(self):
+        super().__init__()
 
     def forward(self, x):
-        pass
+        #this feels suspicously simple
+        return torch.maximum(torch.zeros_like(x), x)
 
-    def backward(self, grad):
-        pass
+    #def backward(self, grad):
+    #    pass
 
 
 class Softmax:
