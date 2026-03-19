@@ -1,0 +1,119 @@
+import torch
+import torch.nn as nn
+def check_accuracy(loader, model, device):
+    num_correct = 0
+    num_samples = 0
+    model.eval()
+    
+    with torch.no_grad():
+        for x, y in loader:
+            x = x.to(device)
+            y = y.to(device)
+
+            scores = model(x)
+            _, predictions = scores.max(1)
+
+            num_correct += (predictions == y).sum().item()
+            num_samples += predictions.size(0)
+    
+    acc = num_correct / num_samples * 100
+
+    model.train()
+    return acc  
+
+def train_model(
+    model,
+    train_loader,
+    test_loader,
+    device,
+    epochs=5,
+    lr=0.01,
+    optimizer_type="adam",
+    weight_decay=0.0,       # L2
+    betas=(0.9, 0.999),     # Adam
+    momentum=0.9,           # SGD
+    learn_rate_type=None,    
+    step_size=2,             # Step learning rate decay
+    gamma=0.9                # Exponential 
+):
+    model = model.to(device)
+
+    criterion = nn.CrossEntropyLoss()
+
+    optimizer_type = (optimizer_type or "").lower()
+    learn_rate_type = (learn_rate_type or "").lower()
+
+    # ---- Optimizer ----
+    if optimizer_type == "adam":
+        optimizer = torch.optim.Adam(
+            model.parameters(),
+            lr=lr,
+            betas=betas,
+            weight_decay=weight_decay
+        )
+    elif optimizer_type == "sgd":
+        optimizer = torch.optim.SGD(
+            model.parameters(),
+            lr=lr,
+            momentum=momentum,
+            weight_decay=weight_decay
+        )
+
+    # ---- Learning Rate Decay ----
+    if learn_rate_type == "step":
+        scheduler = torch.optim.lr_scheduler.StepLR(
+            optimizer, step_size=step_size, gamma=gamma
+        )
+    elif learn_rate_type == "cosine":
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+            optimizer, T_max=epochs
+        )
+    elif learn_rate_type == "exponential":
+        scheduler = torch.optim.lr_scheduler.ExponentialLR(
+        optimizer, gamma=gamma
+    )
+    else:
+        scheduler = None
+
+    train_accs = []
+    test_accs = []
+    train_costs = []
+    iteration = 0
+    for epoch in range(epochs):
+        model.train()
+        correct = 0
+        total = 0
+        epoch_loss = 0
+        for images, labels in train_loader:
+            images = images.to(device)
+            labels = labels.to(device)
+
+            optimizer.zero_grad() # Set gradients back to 0
+
+            outputs = model(images)
+            loss = criterion(outputs, labels)
+
+            loss.backward() # Backprop
+            optimizer.step() # Update weights
+
+            train_costs.append((iteration,round(loss.item(), 4)))
+            epoch_loss += loss.item()
+            iteration += 1
+            
+            _, predicted = torch.max(outputs, 1) # Get best class for every sample
+            total += labels.size(0)
+            correct += (predicted == labels).sum().item()
+
+        train_acc = 100 * correct / total
+        test_acc = check_accuracy(test_loader, model, device)
+        avg_loss = epoch_loss / len(train_loader)
+
+        train_accs.append(round(train_acc, 4))
+        test_accs.append(round(test_acc, 4))
+
+        if scheduler:
+            scheduler.step()
+
+        print(f"Epoch {epoch+1}: Loss {avg_loss:.4f}, Train {train_acc:.2f}%, Test {test_acc:.2f}%")
+
+    return model, train_accs, test_accs, train_costs

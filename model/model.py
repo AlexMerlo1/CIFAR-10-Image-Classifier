@@ -85,9 +85,9 @@ Model(
 )
 """
 import torch.nn as nn
-from layers import Conv2d
+from model.layers import Conv2d
 class Model(nn.Module):
-    def __init__(self):
+    def __init__(self, dropout_p=0):
         super().__init__()
 
         self.network = nn.Sequential(
@@ -104,6 +104,7 @@ class Model(nn.Module):
             nn.Flatten(),
             nn.Linear(64 * 8 * 8, 256),
             nn.ReLU(),
+            nn.Dropout(dropout_p),
             nn.Linear(256, 10)
         )
 

@@ -32,9 +32,9 @@ class Conv2d(nn.Module):
         
     def forward(self, x):
         batch_size, in_channels, H, W = x.shape
-
         H_out = math.floor((H + 2*self.padding - self.kernel_size) / self.stride) + 1
         W_out = math.floor((W + 2*self.padding - self.kernel_size) / self.stride) + 1
+        
         
         # https://docs.pytorch.org/docs/stable/generated/torch.nn.Unfold.html
         # Extract sliding blocks from a batched tensor into final matrix
@@ -78,8 +78,6 @@ class Linear:
         self.bias_enabled = bias
         self.weights = None       # (in_features, out_features) - Random initialization
         self.bias = None          # (1, out_features)
-        self.grad_weights = None
-        self.grad_bias = None
 
     def forward(self, x):
         pass
