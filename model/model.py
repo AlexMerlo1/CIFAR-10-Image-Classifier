@@ -92,19 +92,19 @@ class Model(nn.Module):
 
         self.network = nn.Sequential(
             Conv2d(3, 32, 3, padding=1),
-            # nn.BatchNorm2d(32),
-            # nn.ReLU(),
-            # nn.MaxPool2d(2),
+            nn.BatchNorm2d(32),
+            nn.ReLU(),
+            nn.MaxPool2d(2),
 
-            # nn.Conv2d(32, 64, 3, padding=1),
-            # nn.BatchNorm2d(64),
-            # nn.ReLU(),
-            # nn.MaxPool2d(2),
+            Conv2d(32, 64, 3, padding=1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(),
+            nn.MaxPool2d(2),
 
-            # nn.Flatten(),
-            # nn.Linear(64 * 8 * 8, 256),
-            # nn.ReLU(),
-            # nn.Linear(256, 10)
+            nn.Flatten(),
+            nn.Linear(64 * 8 * 8, 256),
+            nn.ReLU(),
+            nn.Linear(256, 10)
         )
 
     def forward(self, x):

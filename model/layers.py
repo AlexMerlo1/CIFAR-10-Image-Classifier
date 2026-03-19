@@ -33,17 +33,23 @@ class Conv2d(nn.Module):
     def forward(self, x):
         batch_size, in_channels, H, W = x.shape
 
-        # Get output size 
         H_out = math.floor((H + 2*self.padding - self.kernel_size) / self.stride) + 1
         W_out = math.floor((W + 2*self.padding - self.kernel_size) / self.stride) + 1
-
-        # Initialize output matrix
-        final_mat = torch.zeros(batch_size, self.out_channels, H_out, W_out)
-
-        # filter_values = 
-        return x
-    def backward(self, grad):
-        torch.autograd.backward()
+        
+        # https://docs.pytorch.org/docs/stable/generated/torch.nn.Unfold.html
+        # Extract sliding blocks from a batched tensor into final matrix
+        all_patches = torch.nn.functional.unfold(
+            x,
+            kernel_size=self.kernel_size,
+            padding=self.padding,
+            stride=self.stride
+        ) # (Batch size, patch size, # of patches)
+        W = self.weights.flatten(start_dim=1)   # Reshape so can multiply input img with patches
+        # Dot prod of W & all patches
+        Z_l = torch.matmul(W, all_patches)  # (batch_size, output_channels, multiplied matrix)
+        Z_l = Z_l.reshape(batch_size, self.out_channels, H_out, W_out) # unflatten Z_l
+        Z_l = Z_l + self.bias.reshape(1, -1, 1, 1) # Reshape bias to (Batch_size, output_channels,H_out,W_out) for addition
+        return Z_l
 
 
 class Flatten:
