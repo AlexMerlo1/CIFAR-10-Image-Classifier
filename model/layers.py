@@ -65,7 +65,7 @@ class Flatten:
         pass
 
 
-class Linear:
+class Linear(nn.Module):
     """
     Fully connected layer: output = x @ W + b
     Input:  (batch_size, in_features)
@@ -73,20 +73,28 @@ class Linear:
     """
 
     def __init__(self, in_features, out_features, bias=True):
+        super().__init__()
         self.in_features = in_features
         self.out_features = out_features
         self.bias_enabled = bias
-        self.weights = None       # (in_features, out_features) - Random initialization
-        self.bias = None          # (1, out_features)
-        self.grad_weights = None
-        self.grad_bias = None
+
+        #nn parameters
+        self.weights = nn.Parameter(torch.randn((self.out_features, self.in_features))*0.01)
+
+        #check bias
+        if self.bias_enabled:
+            self.bias = nn.Parameter(torch.zeros((self.out_features)))
+        else:
+            self.register_parameter('bias', None)
+
 
     def forward(self, x):
-        pass
-
-    def backward(self, grad):
-        pass
-
+        #calculate Z
+        Z = torch.matmul(x, self.weights.t())
+        #add bias if enabled
+        if self.bias is not None:
+            Z += self.bias
+        return Z
 
 
 class ReLU:

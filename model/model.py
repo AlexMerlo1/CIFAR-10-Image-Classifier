@@ -85,26 +85,27 @@ Model(
 )
 """
 import torch.nn as nn
-from layers import Conv2d
+from model.layers import Conv2d as csi5140_Conv2d
+from model.layers import Linear as csi5140_Linear
 class Model(nn.Module):
     def __init__(self):
         super().__init__()
 
         self.network = nn.Sequential(
-            Conv2d(3, 32, 3, padding=1),
+            nn.Conv2d(3, 32, 3, padding=1),
             nn.BatchNorm2d(32),
             nn.ReLU(),
             nn.MaxPool2d(2),
 
-            Conv2d(32, 64, 3, padding=1),
+            nn.Conv2d(32, 64, 3, padding=1),
             nn.BatchNorm2d(64),
             nn.ReLU(),
             nn.MaxPool2d(2),
 
             nn.Flatten(),
-            nn.Linear(64 * 8 * 8, 256),
+            csi5140_Linear(64 * 8 * 8, 256),
             nn.ReLU(),
-            nn.Linear(256, 10)
+            csi5140_Linear(256, 10)
         )
 
     def forward(self, x):
