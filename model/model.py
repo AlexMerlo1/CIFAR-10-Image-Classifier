@@ -84,27 +84,31 @@ Model(
     augmentation=Augment(horizontal_flip=True, rotation_degrees=15)
 )
 """
-class Model:
-    def __init__(self, layers, optimizer=None, regularization=None, augmentation=None):
-        self.layers = layers
-        # self.optimizer = optimizer if optimizer else SGD(lr=0.01)
-        # self.regularization = regularization
-        # self.augmentation = augmentation
+import torch.nn as nn
+from model.layers import Conv2d as csi5140_Conv2d
+from model.layers import Linear as csi5140_Linear
+from model.layers import ReLU as csi5140_ReLU
+class Model(nn.Module):
+    def __init__(self):
+        super().__init__()
 
-    def forward():
-        # Perform .forward for every layer
-        # Layer1.forward -> layer2.forward ...
+        self.network = nn.Sequential(
+            nn.Conv2d(3, 32, 3, padding=1),
+            nn.BatchNorm2d(32),
+            csi5140_ReLU(),
+            nn.MaxPool2d(2),
 
-        pass
-    def backward():
-        # Perform .backward for every layer
-        # Layer4.backward / Update gradiant -> Layer3.backward ...
-        pass
+            nn.Conv2d(32, 64, 3, padding=1),
+            nn.BatchNorm2d(64),
+            csi5140_ReLU(),
+            nn.MaxPool2d(2),
 
-    def train(self, train_loader, epochs=10):
-        # Flatten
-        # Forward pass of all layers
-        # Backward pass of all layers
-        
-        print("Now training with layers", self.layers)
-        print("Using", train_loader)
+            nn.Flatten(),
+            csi5140_Linear(64 * 8 * 8, 256),
+            csi5140_ReLU(),
+            csi5140_Linear(256, 10)
+        )
+
+    def forward(self, x):
+        # step through each layer of the network
+        return self.network(x)
