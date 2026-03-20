@@ -55,6 +55,9 @@ $$\alpha_t = \alpha_0 \cdot \gamma^{\left\lfloor \frac{t}{s} \right\rfloor}$$
 
 $$\alpha_t = \frac{\alpha_0}{2}\left(1 + \cos\left(\frac{\pi t}{T}\right)\right)$$
 
+**Exponential Rate Decay**  
+$x_t = x_0 \times (1 + r)^t$
+
 ## Regularization
 
 **L2:** Add additional term to loss function

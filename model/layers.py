@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import math
+import numpy as np
 
 class Conv2d(nn.Module):
     """
@@ -65,7 +66,7 @@ class Flatten:
         pass
 
 
-class Linear:
+class Linear(nn.Module):
     """
     Fully connected layer: output = x @ W + b
     Input:  (batch_size, in_features)
@@ -73,31 +74,45 @@ class Linear:
     """
 
     def __init__(self, in_features, out_features, bias=True):
+        super().__init__()
         self.in_features = in_features
         self.out_features = out_features
         self.bias_enabled = bias
-        self.weights = None       # (in_features, out_features) - Random initialization
-        self.bias = None          # (1, out_features)
+
+        #nn parameters
+        self.weights = nn.Parameter(torch.randn((self.out_features, self.in_features))*0.01)
+
+        #check bias
+        if self.bias_enabled:
+            self.bias = nn.Parameter(torch.zeros((self.out_features)))
+        else:
+            self.register_parameter('bias', None)
+
 
     def forward(self, x):
-        pass
+        #calculate Z
+        Z = torch.matmul(x, self.weights.t())
+        #add bias if enabled
+        if self.bias is not None:
+            Z += self.bias
+        return Z
 
-    def backward(self, grad):
-        pass
 
-
-
-class ReLU:
+class ReLU(nn.Module):
     """
     ReLU activation: f(x) = max(0, x)
     Input/Output: same shape as input
+    Using zeros_like to keep tensors on the same device (GPU/CPU)
     """
+    def __init__(self):
+        super().__init__()
 
     def forward(self, x):
-        pass
+        #this feels suspicously simple
+        return torch.maximum(torch.zeros_like(x), x)
 
-    def backward(self, grad):
-        pass
+    #def backward(self, grad):
+    #    pass
 
 
 class Softmax:

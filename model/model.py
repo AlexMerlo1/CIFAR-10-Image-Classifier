@@ -57,9 +57,9 @@ Usage:
 # Baseline
 Model(
     layers=[
-        Conv2d(in_channels=3, out_channels=32, kernel_size=3, padding=1),
-        ReLU(),
-        Flatten(),
+        CNN(in_channels=3, out_channels=32, kernel_size=3, padding=1), 
+        ReLU(), 
+        A Flatten(), 
         Linear(in_features=32*32*32, out_features=256),
         ReLU(),
         Linear(in_features=256, out_features=10),
@@ -85,27 +85,29 @@ Model(
 )
 """
 import torch.nn as nn
-from model.layers import Conv2d
+from model.layers import Conv2d as csi5140_Conv2d
+from model.layers import Linear as csi5140_Linear
+from model.layers import ReLU as csi5140_ReLU
 class Model(nn.Module):
     def __init__(self, dropout_p=0):
         super().__init__()
 
         self.network = nn.Sequential(
-            Conv2d(3, 32, 3, padding=1),
+            nn.Conv2d(3, 32, 3, padding=1),
             nn.BatchNorm2d(32),
-            nn.ReLU(),
+            csi5140_ReLU(),
             nn.MaxPool2d(2),
 
-            Conv2d(32, 64, 3, padding=1),
+            nn.Conv2d(32, 64, 3, padding=1),
             nn.BatchNorm2d(64),
-            nn.ReLU(),
+            csi5140_ReLU(),
             nn.MaxPool2d(2),
 
             nn.Flatten(),
-            nn.Linear(64 * 8 * 8, 256),
-            nn.ReLU(),
+            csi5140_Linear.Linear(64 * 8 * 8, 256),
+            csi5140_ReLU.ReLU(),
             nn.Dropout(dropout_p),
-            nn.Linear(256, 10)
+            csi5140_Linear.Linear(256, 10)
         )
 
     def forward(self, x):
