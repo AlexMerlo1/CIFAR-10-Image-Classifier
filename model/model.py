@@ -57,9 +57,9 @@ Usage:
 # Baseline
 Model(
     layers=[
-        Conv2d(in_channels=3, out_channels=32, kernel_size=3, padding=1),
-        ReLU(),
-        Flatten(),
+        CNN(in_channels=3, out_channels=32, kernel_size=3, padding=1), 
+        ReLU(), 
+        A Flatten(), 
         Linear(in_features=32*32*32, out_features=256),
         ReLU(),
         Linear(in_features=256, out_features=10),
