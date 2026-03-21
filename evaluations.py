@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from optimizers.optim import csi5140Adam, csi5140GDM, csi5140GD
+from utils.optim import csi5140Adam, csi5140GDM, csi5140GD
 def check_accuracy(loader, model, device):
     num_correct = 0
     num_samples = 0
