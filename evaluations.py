@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+from optimizers.optim import csi5140Adam, csi5140GDM, csi5140GD
 def check_accuracy(loader, model, device):
     num_correct = 0
     num_samples = 0
@@ -43,7 +44,7 @@ def train_model(
     optimizer_type = (optimizer_type or "").lower()
     learn_rate_type = (learn_rate_type or "").lower()
 
-    # ---- Optimizer ----
+    # ---- Optimizers ----
     if optimizer_type == "adam":
         optimizer = torch.optim.Adam(
             model.parameters(),
@@ -58,6 +59,21 @@ def train_model(
             momentum=momentum,
             weight_decay=weight_decay
         )
+    #elif optimizer_type == "csi5140_adam":
+    #        optimizer = torch.optim.Adam(
+    #        model.parameters(),
+    #        lr=lr,
+    #        betas=betas,
+    #        weight_decay=weight_decay
+    #    )
+    elif optimizer_type == "csi5140_gdm":
+            optimizer = csi5140GDM(
+            model.parameters(),
+            momentum=momentum,
+            lr=lr,
+            #weight_decay=weight_decay
+        )
+
 
     # ---- Learning Rate Decay ----
     if learn_rate_type == "step":
@@ -85,8 +101,8 @@ def train_model(
         total = 0
         epoch_loss = 0
         for images, labels in train_loader:
-            images = images.to(device)
-            labels = labels.to(device)
+            images = images.to(device, non_blocking=True)
+            labels = labels.to(device, non_blocking=True)
 
             optimizer.zero_grad() # Set gradients back to 0
 
