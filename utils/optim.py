@@ -1,6 +1,7 @@
 import torch
 from torch.optim import Optimizer
 import math
+from utils.regularization import csi5140_l2
 
 #build initial gradient decenst to understand how pytorch tracks / updates variables.
 class csi5140GD(Optimizer):
@@ -10,23 +11,29 @@ class csi5140GD(Optimizer):
     hyperparamters:
     learning rate def(0.01)
     """
-    def __init__(self, params, lr=0.01):
-        defaults = dict(lr=lr)
+    def __init__(self, params, lr=0.01, weight_decay=0.1):
+        defaults = dict(lr=lr, weight_decay=weight_decay)
         super(csi5140GD, self).__init__(params, defaults)
     def step(self):
         for group in self.param_groups:
 
             #update hyperparameters
             lr = group['lr'] 
+            weight_decay = group.get('weight_decay', 0)
 
             #work through individual parameters
             for param in group['params']:
                 #check for gradient tracking on each parameters
                 if param.grad is None: 
                     continue #ignore if not tracking gradients
-
+                
                 #get gradient from paramter
                 grad = param.grad.data
+
+                #l2
+                if weight_decay != 0:
+                    csi5140_l2(param, weight_decay)
+
 
                 #update parameter (w = w - (lr* grad))
                 param.data.add_(grad, alpha=-lr)    
@@ -41,24 +48,29 @@ class csi5140GDM(Optimizer):
     learning rate def(0.01)
     momentum def(0.9)
     """
-    def __init__(self, params, momentum=0.9, lr=0.01):
-        defaults = dict(lr=lr, momentum=momentum)
+    def __init__(self, params, momentum=0.9, lr=0.01, weight_decay=0.1):
+        defaults = dict(lr=lr, momentum=momentum, weight_decay=weight_decay)
         super(csi5140GDM, self).__init__(params, defaults)
     def step(self):
         for group in self.param_groups:
             #update hyperparameters
             lr = group['lr']
             momentum = group['momentum']
+            weight_decay = group.get('weight_decay', 0)
             #work through individual parameters
             
             for param in group['params']:
                 #check for gradient tracking on each parameters
                 if param.grad is None: 
                     continue #ignore if not tracking gradients
-
+                
                 #get gradient & state from paramter
                 grad = param.grad.data
                 state = self.state[param] #momentum buffer
+
+                #L2
+                if weight_decay != 0:
+                    csi5140_l2(param, weight_decay)
 
                 #check state is not empty
                 if len(state) == 0:
@@ -82,9 +94,11 @@ class csi5140Adam(Optimizer):
     beta 1 def(0.9)
     beta 2 def(0.99)
     eps def(1e-8)
+
+    something seems wrong....review this class
     """
-    def __init__(self, params, lr=0.001, betas=(0.9, 0.99), eps=1e-8):
-        defaults = dict(lr=lr, betas=betas, eps=eps)
+    def __init__(self, params, lr=0.001, betas=(0.9, 0.99), eps=1e-8, weight_decay=0.1):
+        defaults = dict(lr=lr, betas=betas, eps=eps, weight_decay=weight_decay)
         super(csi5140Adam, self).__init__(params, defaults)
     def step(self):
         loss = None
@@ -94,6 +108,7 @@ class csi5140Adam(Optimizer):
             lr = group['lr'] 
             beta1, beta2 = group['betas']
             eps = group['eps']
+            weight_decay = group.get('weight_decay', 0)
 
             #work through individual parameters
             for param in group['params']:
@@ -105,7 +120,7 @@ class csi5140Adam(Optimizer):
                 #get gradients and states
                 grad = param.grad.data
                 state = self.state[param]
-                                
+                               
                 #setup state values
                 if len(state) == 0:
                     state['step'] =0
@@ -134,5 +149,9 @@ class csi5140Adam(Optimizer):
                 #update parameters
                 bottom = exp_avg_squared.sqrt().add_(eps)
                 param.data.addcdiv_(exp_avg, bottom, value=-step_size)
+
+                #L2 is this the correct time in the sequence to update the weights?
+                if weight_decay != 0:
+                    csi5140_l2(param, weight_decay)
         
         return loss
