@@ -8,7 +8,7 @@ class csi5140GD(Optimizer):
     custom implementation of gradient descent leveraging pytorch (built to understand the methodology)
     params are pulled from pytorch
     hyperparamters:
-    learning rate (lr)
+    learning rate def(0.01)
     """
     def __init__(self, params, lr=0.01):
         defaults = dict(lr=lr)
@@ -38,8 +38,8 @@ class csi5140GDM(Optimizer):
     custom implementation of gradient descent with momentum leveraging pytorch
     params are pulled from pytorch
     hyperparamters:
-    learning rate (lr)
-    momentum (momentum)
+    learning rate def(0.01)
+    momentum def(0.9)
     """
     def __init__(self, params, momentum=0.9, lr=0.01):
         defaults = dict(lr=lr, momentum=momentum)
@@ -78,9 +78,12 @@ class csi5140Adam(Optimizer):
     custom implementation of ADAM leveraging pytorch
     params are pulled from pytorch
     hyperparamters:
-    learning rate (lr)
+    learning rate def(0.001)
+    beta 1 def(0.9)
+    beta 2 def(0.99)
+    eps def(1e-8)
     """
-    def __init__(self, params, lr=0.01, betas=(0.9, 0.99), eps=1e-8):
+    def __init__(self, params, lr=0.001, betas=(0.9, 0.99), eps=1e-8):
         defaults = dict(lr=lr, betas=betas, eps=eps)
         super(csi5140Adam, self).__init__(params, defaults)
     def step(self, closure=None):
