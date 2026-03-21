@@ -59,13 +59,13 @@ def train_model(
             momentum=momentum,
             weight_decay=weight_decay
         )
-    #elif optimizer_type == "csi5140_adam":
-    #        optimizer = torch.optim.Adam(
-    #        model.parameters(),
-    #        lr=lr,
-    #        betas=betas,
-    #        weight_decay=weight_decay
-    #    )
+    elif optimizer_type == "csi5140_adam":
+            optimizer = csi5140Adam(
+            model.parameters(),
+            lr=lr,
+            betas=betas,
+            #weight_decay=weight_decay
+        )
     elif optimizer_type == "csi5140_gdm":
             optimizer = csi5140GDM(
             model.parameters(),

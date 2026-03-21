@@ -1,10 +1,6 @@
 import torch
 from torch.optim import Optimizer
-
-class csi5140Adam(Optimizer):
-    def __init__(self, params, alpha, beta_1, beta_2, epsilon):
-        super().__init__(params)
-        
+import math
 
 #build initial gradient decenst to understand how pytorch tracks / updates variables.
 class csi5140GD(Optimizer):
@@ -14,19 +10,24 @@ class csi5140GD(Optimizer):
     hyperparamters:
     learning rate (lr)
     """
-    def __init__(self, params, lr=0.02):
+    def __init__(self, params, lr=0.01):
         defaults = dict(lr=lr)
         super(csi5140GD, self).__init__(params, defaults)
     def step(self):
         for group in self.param_groups:
-            lr = group['lr'] #update hyperparameters
+
+            #update hyperparameters
+            lr = group['lr'] 
+
             #work through individual parameters
             for param in group['params']:
                 #check for gradient tracking on each parameters
                 if param.grad is None: 
                     continue #ignore if not tracking gradients
+
                 #get gradient from paramter
                 grad = param.grad.data
+
                 #update parameter (w = w - (lr* grad))
                 param.data.add_(grad, alpha=-lr)    
 
@@ -40,12 +41,13 @@ class csi5140GDM(Optimizer):
     learning rate (lr)
     momentum (momentum)
     """
-    def __init__(self, params, momentum=0.9, lr=0.02):
+    def __init__(self, params, momentum=0.9, lr=0.01):
         defaults = dict(lr=lr, momentum=momentum)
         super(csi5140GDM, self).__init__(params, defaults)
     def step(self):
         for group in self.param_groups:
-            lr = group['lr'] #update hyperparameters
+            #update hyperparameters
+            lr = group['lr']
             momentum = group['momentum']
             #work through individual parameters
             
@@ -68,3 +70,66 @@ class csi5140GDM(Optimizer):
 
                 #update parameter (w = w - (lr* velocity))
                 param.data.add_(vel, alpha=-lr)    
+
+
+#ADAM Optimizer
+class csi5140Adam(Optimizer):
+    """
+    custom implementation of ADAM leveraging pytorch
+    params are pulled from pytorch
+    hyperparamters:
+    learning rate (lr)
+    """
+    def __init__(self, params, lr=0.01, betas=(0.9, 0.99), eps=1e-8):
+        defaults = dict(lr=lr, betas=betas, eps=eps)
+        super(csi5140Adam, self).__init__(params, defaults)
+    def step(self, closure=None):
+        loss = None
+        for group in self.param_groups:
+
+            #update hyperparameters
+            lr = group['lr'] 
+            beta1, beta2 = group['betas']
+            eps = group['eps']
+
+            #work through individual parameters
+            for param in group['params']:
+
+                #check for gradient tracking on each parameters
+                if param.grad is None: 
+                    continue #ignore if not tracking gradients
+
+                #get gradients and states
+                grad = param.grad.data
+                state = self.state[param]
+                                
+                #setup state values
+                if len(state) == 0:
+                    state['step'] =0
+
+                    #exp moving average of grad values 
+                    state['exp_avg'] = torch.zeros_like(param.data)
+
+                    #exp moving average of squared grads
+                    state['exp_avg_sq'] = torch.zeros_like(param.data)
+
+                exp_avg = state['exp_avg']
+                exp_avg_squared = state['exp_avg_sq']
+                state['step'] += 1
+
+                #calculate ADAM
+                exp_avg.mul_(beta1).add_(grad, alpha=1 - beta1)
+                exp_avg_squared.mul_(beta2).addcmul_(grad, grad, value=1 - beta2)
+
+                #bias corrections
+                bias_corr1 = 1 - beta1 ** state['step']
+                bias_corr2 = 1 - beta2 ** state['step']
+
+                #step size calc
+                step_size = lr * (math.sqrt(bias_corr2) / bias_corr1)
+
+                #update parameters
+                bottom = exp_avg_squared.sqrt().add_(eps)
+                param.data.addcdiv_(exp_avg, bottom, value=-step_size)
+        
+        return loss
