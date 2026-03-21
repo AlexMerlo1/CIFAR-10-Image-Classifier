@@ -86,7 +86,7 @@ class csi5140Adam(Optimizer):
     def __init__(self, params, lr=0.001, betas=(0.9, 0.99), eps=1e-8):
         defaults = dict(lr=lr, betas=betas, eps=eps)
         super(csi5140Adam, self).__init__(params, defaults)
-    def step(self, closure=None):
+    def step(self):
         loss = None
         for group in self.param_groups:
 
