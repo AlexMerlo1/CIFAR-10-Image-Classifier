@@ -149,8 +149,11 @@ def plot_metrics(train_accs, test_accs, costs, title_prefix="Model"):
     plt.show()
 
     # --- Cost Plot ---
+    iterations = [c[0] for c in costs]
+    losses = [c[1] for c in costs]
+
     plt.figure()
-    plt.plot(range(1, len(costs) + 1), costs)
+    plt.plot(iterations, losses)
     plt.xlabel("Iteration")
     plt.ylabel("Cost (Loss)")
     plt.title(f"{title_prefix} Cost vs Iterations")
