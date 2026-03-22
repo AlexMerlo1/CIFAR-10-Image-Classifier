@@ -2,6 +2,7 @@ import torch
 from torch.optim import Optimizer
 import math
 from utils.regularization import csi5140_l2
+import torch.nn as nn
 
 #build initial gradient decenst to understand how pytorch tracks / updates variables.
 class csi5140GD(Optimizer):
@@ -94,8 +95,6 @@ class csi5140Adam(Optimizer):
     beta 1 def(0.9)
     beta 2 def(0.99)
     eps def(1e-8)
-
-    something seems wrong....review this class
     """
     def __init__(self, params, lr=0.001, betas=(0.9, 0.99), eps=1e-8, weight_decay=0.1):
         defaults = dict(lr=lr, betas=betas, eps=eps, weight_decay=weight_decay)
@@ -150,8 +149,38 @@ class csi5140Adam(Optimizer):
                 bottom = exp_avg_squared.sqrt().add_(eps)
                 param.data.addcdiv_(exp_avg, bottom, value=-step_size)
 
-                #L2 is this the correct time in the sequence to update the weights?
+                #L2
                 if weight_decay != 0:
                     csi5140_l2(param, weight_decay)
         
         return loss
+    
+class csi5140Softmax(nn.Module):
+    def __init__(self, dim=1):    
+        super(csi5140Softmax, self).__init__()
+        self.dim = dim
+
+    def forward(self, x):
+        """
+        use as activation function - output of final ann layer goes here
+        x = neuron output pre-activation
+        """ 
+        exponent = torch.exp(x)
+        exponent_sums = torch.sum(exponent, dim=self.dim, keepdim=True)
+
+        return exponent/exponent_sums
+
+
+
+class csi5140CrossEntropyLoss(nn.Module):
+    def __init__(self):
+        super(csi5140CrossEntropyLoss, self).__init__()
+
+    def forward(self, y_pred, y_true):
+        #get number of samples
+        n = y_pred.shape[0]
+        #extract classification values, when they are correct
+        class_probs = y_pred[torch.arange(n), y_true]
+        #do the loss calc
+        loss = -torch.log(class_probs)
+        return torch.mean(loss)

@@ -3,6 +3,8 @@ import torch.nn as nn
 from utils.optim import csi5140Adam, csi5140GDM, csi5140GD
 from utils.regularization import csi5140_cosine_learning_rate_decay as csi5140_cosine
 from utils.regularization import csi5140_step_learning_rate_decay as csi5140_step
+from utils.optim import csi5140CrossEntropyLoss
+from utils.optim import csi5140Softmax
 
 def check_accuracy(loader, model, device):
     num_correct = 0
@@ -40,11 +42,15 @@ def train_model(
     step_size=2,             # Step learning rate decay
     lr_min = 0.001,          # min learning rate during decay
     lr_max = 0.01,           # max learning rate during decay
-    gamma=0.9                # step decay intensity 
+    gamma=0.9,               # step decay intensity 
+    loss_funct ="csi5140_loss" #custom loss
 ):
     model = model.to(device)
 
-    criterion = nn.CrossEntropyLoss()
+    if loss_funct == "csi5140_loss":
+        criterion = csi5140CrossEntropyLoss()
+    else:
+        criterion = nn.CrossEntropyLoss()
 
     optimizer_type = (optimizer_type or "").lower()
     learn_rate_type = (learn_rate_type or "").lower()
