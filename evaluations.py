@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 from utils.optim import csi5140Adam, csi5140GDM, csi5140GD
 from utils.regularization import csi5140_cosine_learning_rate_decay as csi5140_cosine
+from utils.regularization import csi5140_step_learning_rate_decay as csi5140_step
+
 def check_accuracy(loader, model, device):
     num_correct = 0
     num_samples = 0
@@ -38,7 +40,7 @@ def train_model(
     step_size=2,             # Step learning rate decay
     lr_min = 0.001,          # min learning rate during decay
     lr_max = 0.01,           # max learning rate during decay
-    gamma=0.9                # Exponential 
+    gamma=0.9                # step decay intensity 
 ):
     model = model.to(device)
 
@@ -91,7 +93,7 @@ def train_model(
         scheduler = torch.optim.lr_scheduler.ExponentialLR(
         optimizer, gamma=gamma
     )
-    elif learn_rate_type == "csi5140_cosine":
+    elif learn_rate_type == "csi5140_cosine" or "csi5140_step":
         scheduler = None
 
     else:
@@ -122,6 +124,9 @@ def train_model(
             if learn_rate_type == "csi5140_cosine":
                 #this function will modify learning rates
                 csi5140_cosine(optimizer, epoch, epochs, lr_max, lr_min)
+            if learn_rate_type == "csi5140_step":
+                #this function will modify learning rates
+                csi5140_step(optimizer, epoch, lr_max, step_size, gamma)
 
             train_costs.append((iteration,round(loss.item(), 4)))
             epoch_loss += loss.item()

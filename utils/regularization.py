@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import math
+import queue
 
 def csi5140_l2(param, l2_lambda):
     """
@@ -35,6 +36,7 @@ class csi5140DDropout(nn.Module):
             #exit routine if not training
             return x
 
+
 def csi5140_cosine_learning_rate_decay(optimizer, step_now, step_max, lr_initial, lr_min):
     """
     calculates current epoch learning rate based on cosine decay, 
@@ -64,6 +66,25 @@ def csi5140_cosine_learning_rate_decay(optimizer, step_now, step_max, lr_initial
     #return learning rate for ablation  study
     return lr
 
- 
-class csi5140StepDecay():
-    pass
+def csi5140_step_learning_rate_decay(optimizer, epoch, lr_initial, drop_size, drop_factor):
+    """
+    calculates current epoch learning rate based on step decay, 
+    updates optimizer.param learning rates.
+    integrate into training loop
+
+    optimizer = optimizer object used in model (custom models work too as we inherit and override the optimizer class)
+    drop_size = how many epochs until a drop is initiated (step size)
+    drop_factory = hyperparameter to set drop rate (gamma)
+    lr_initial = starting learning rate
+    """
+
+    #check if we need to modify learning rate 
+    if epoch > 0 and epoch % drop_size == 0: #check if it is time to drop the learning rate
+        lr = lr_initial * (drop_factor ** (epoch // drop_size)) #calculate the learning rate based on how many drops have occured
+        for param_group in optimizer.param_groups:
+            param_group['lr'] = lr
+
+        #return learning rate for ablation study
+        return lr
+
+
