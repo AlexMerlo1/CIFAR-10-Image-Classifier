@@ -133,3 +133,26 @@ def train_model(
         print(f"Epoch {epoch+1}: Loss {avg_loss:.4f}, Train {train_acc:.2f}%, Test {test_acc:.2f}%")
 
     return model, train_accs, test_accs, train_costs
+
+import matplotlib.pyplot as plt
+
+def plot_metrics(train_accs, test_accs, costs, title_prefix="Model"):
+    # --- Accuracy Plot ---
+    plt.figure()
+    plt.plot(range(1, len(train_accs) + 1), train_accs, label="Train Accuracy")
+    plt.plot(range(1, len(test_accs) + 1), test_accs, label="Test Accuracy")
+    plt.xlabel("Epoch")
+    plt.ylabel("Accuracy")
+    plt.title(f"{title_prefix} Accuracy vs Epochs")
+    plt.legend()
+    plt.grid()
+    plt.show()
+
+    # --- Cost Plot ---
+    plt.figure()
+    plt.plot(range(1, len(costs) + 1), costs)
+    plt.xlabel("Iteration")
+    plt.ylabel("Cost (Loss)")
+    plt.title(f"{title_prefix} Cost vs Iterations")
+    plt.grid()
+    plt.show()
