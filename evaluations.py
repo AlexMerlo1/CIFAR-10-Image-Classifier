@@ -36,6 +36,8 @@ def train_model(
     momentum=0.9,           # SGD
     learn_rate_type=None,    
     step_size=2,             # Step learning rate decay
+    lr_min = 0.001,          # min learning rate during decay
+    lr_max = 0.01,           # max learning rate during decay
     gamma=0.9                # Exponential 
 ):
     model = model.to(device)
@@ -119,8 +121,7 @@ def train_model(
             #csi5140 learning rate decays
             if learn_rate_type == "csi5140_cosine":
                 #this function will modify learning rates
-                new_lr = csi5140_cosine(optimizer, epoch, epochs, 0.01, 0.001)
-                print(f"new learning rate for epoch is: {new_lr}")
+                csi5140_cosine(optimizer, epoch, epochs, lr_max, lr_min)
 
             train_costs.append((iteration,round(loss.item(), 4)))
             epoch_loss += loss.item()
