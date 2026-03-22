@@ -88,6 +88,7 @@ import torch.nn as nn
 from model.layers import Conv2d as csi5140_Conv2d
 from model.layers import Linear as csi5140_Linear
 from model.layers import ReLU as csi5140_ReLU
+from utils.regularization import csi5140DDropout
 from utils.optim import csi5140Softmax
 class Model(nn.Module):
     def __init__(self, dropout_p=0, custom_loss=False):
@@ -108,7 +109,7 @@ class Model(nn.Module):
                 nn.Flatten(),
                 csi5140_Linear(64 * 8 * 8, 256),
                 csi5140_ReLU(),
-                nn.Dropout(dropout_p),
+                csi5140DDropout(dropout_p),
                 csi5140_Linear(256, 10),
                 csi5140Softmax()
             )
@@ -127,7 +128,7 @@ class Model(nn.Module):
                 nn.Flatten(),
                 csi5140_Linear(64 * 8 * 8, 256),
                 csi5140_ReLU(),
-                nn.Dropout(dropout_p),
+                csi5140DDropout(dropout_p),
                 csi5140_Linear(256, 10)
             )
 

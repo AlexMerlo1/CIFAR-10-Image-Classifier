@@ -84,6 +84,12 @@ def train_model(
             lr=lr,
             #weight_decay=weight_decay
         )
+    elif optimizer_type == "csi5140_gd":
+        optimizer = csi5140GD(
+            model.parameters(),
+            lr=lr,
+            weight_decay=weight_decay
+        )
 
 
     # ---- Learning Rate Decay ----
