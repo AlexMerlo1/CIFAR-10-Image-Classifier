@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 from utils.optim import csi5140Adam, csi5140GDM, csi5140GD
+from utils.regularization import csi5140_cosine_learning_rate_decay as csi5140_cosine
 def check_accuracy(loader, model, device):
     num_correct = 0
     num_samples = 0
@@ -88,6 +89,9 @@ def train_model(
         scheduler = torch.optim.lr_scheduler.ExponentialLR(
         optimizer, gamma=gamma
     )
+    elif learn_rate_type == "csi5140_cosine":
+        scheduler = None
+
     else:
         scheduler = None
 
@@ -111,6 +115,12 @@ def train_model(
 
             loss.backward() # Backprop
             optimizer.step() # Update weights
+
+            #csi5140 learning rate decays
+            if learn_rate_type == "csi5140_cosine":
+                #this function will modify learning rates
+                new_lr = csi5140_cosine(optimizer, epoch, epochs, 0.01, 0.001)
+                print(f"new learning rate for epoch is: {new_lr}")
 
             train_costs.append((iteration,round(loss.item(), 4)))
             epoch_loss += loss.item()
