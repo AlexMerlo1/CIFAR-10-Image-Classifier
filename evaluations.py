@@ -1,5 +1,12 @@
 import torch
 import torch.nn as nn
+from utils.optim import csi5140Adam, csi5140GDM, csi5140GD
+from utils.regularization import csi5140_cosine_learning_rate_decay as csi5140_cosine
+from utils.regularization import csi5140_step_learning_rate_decay as csi5140_step
+from utils.optim import csi5140CrossEntropyLoss
+from utils.optim import csi5140Softmax
+from pathlib import Path
+
 def check_accuracy(loader, model, device):
     num_correct = 0
     num_samples = 0
@@ -34,16 +41,22 @@ def train_model(
     momentum=0.9,           # SGD
     learn_rate_type=None,    
     step_size=2,             # Step learning rate decay
-    gamma=0.9                # Exponential 
+    lr_min = 0.001,          # min learning rate during decay
+    lr_max = 0.01,           # max learning rate during decay
+    gamma=0.9,               # step decay intensity 
+    loss_funct ="csi5140_loss" #custom loss
 ):
     model = model.to(device)
 
-    criterion = nn.CrossEntropyLoss()
+    if loss_funct == "csi5140_loss":
+        criterion = csi5140CrossEntropyLoss()
+    else:
+        criterion = nn.CrossEntropyLoss()
 
     optimizer_type = (optimizer_type or "").lower()
     learn_rate_type = (learn_rate_type or "").lower()
 
-    # ---- Optimizer ----
+    # ---- Optimizers ----
     if optimizer_type == "adam":
         optimizer = torch.optim.Adam(
             model.parameters(),
@@ -58,6 +71,27 @@ def train_model(
             momentum=momentum,
             weight_decay=weight_decay
         )
+    elif optimizer_type == "csi5140_adam":
+            optimizer = csi5140Adam(
+            model.parameters(),
+            lr=lr,
+            betas=betas,
+            #weight_decay=weight_decay
+        )
+    elif optimizer_type == "csi5140_gdm":
+            optimizer = csi5140GDM(
+            model.parameters(),
+            momentum=momentum,
+            lr=lr,
+            #weight_decay=weight_decay
+        )
+    elif optimizer_type == "csi5140_gd":
+        optimizer = csi5140GD(
+            model.parameters(),
+            lr=lr,
+            weight_decay=weight_decay
+        )
+
 
     # ---- Learning Rate Decay ----
     if learn_rate_type == "step":
@@ -72,6 +106,9 @@ def train_model(
         scheduler = torch.optim.lr_scheduler.ExponentialLR(
         optimizer, gamma=gamma
     )
+    elif learn_rate_type == "csi5140_cosine" or "csi5140_step":
+        scheduler = None
+
     else:
         scheduler = None
 
@@ -85,8 +122,8 @@ def train_model(
         total = 0
         epoch_loss = 0
         for images, labels in train_loader:
-            images = images.to(device)
-            labels = labels.to(device)
+            images = images.to(device, non_blocking=True)
+            labels = labels.to(device, non_blocking=True)
 
             optimizer.zero_grad() # Set gradients back to 0
 
@@ -95,6 +132,14 @@ def train_model(
 
             loss.backward() # Backprop
             optimizer.step() # Update weights
+
+            #csi5140 learning rate decays
+            if learn_rate_type == "csi5140_cosine":
+                #this function will modify learning rates
+                csi5140_cosine(optimizer, epoch, epochs, lr_max, lr_min)
+            if learn_rate_type == "csi5140_step":
+                #this function will modify learning rates
+                csi5140_step(optimizer, epoch, lr_max, step_size, gamma)
 
             train_costs.append((iteration,round(loss.item(), 4)))
             epoch_loss += loss.item()
@@ -117,3 +162,34 @@ def train_model(
         print(f"Epoch {epoch+1}: Loss {avg_loss:.4f}, Train {train_acc:.2f}%, Test {test_acc:.2f}%")
 
     return model, train_accs, test_accs, train_costs
+
+import matplotlib.pyplot as plt
+
+def plot_metrics(train_accs, test_accs, costs, title_prefix="Model"):
+    plot_folder = Path('plots/')
+    # --- Accuracy Plot ---
+    plt.figure()
+    plt.plot(range(1, len(train_accs) + 1), train_accs, label="Train Accuracy")
+    plt.plot(range(1, len(test_accs) + 1), test_accs, label="Test Accuracy")
+    plt.xlabel("Epoch")
+    plt.ylabel("Accuracy")
+    plt.title(f"{title_prefix} Accuracy vs Epochs")
+    plt.legend()
+    plt.grid()
+    plt_name = f"{title_prefix}_accuracy_vs_epochs.png"
+    plt.savefig(plot_folder / plt_name)
+    plt.show()
+
+    # --- Cost Plot ---
+    iterations = [c[0] for c in costs]
+    losses = [c[1] for c in costs]
+
+    plt.figure()
+    plt.plot(iterations, losses)
+    plt.xlabel("Iteration")
+    plt.ylabel("Cost (Loss)")
+    plt.title(f"{title_prefix} Cost vs Iterations")
+    plt.grid()
+    plt_name = f"{title_prefix}_cost_vs_iterations.png"
+    plt.savefig(plot_folder / plt_name)
+    plt.show()

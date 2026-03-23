@@ -88,27 +88,50 @@ import torch.nn as nn
 from model.layers import Conv2d as csi5140_Conv2d
 from model.layers import Linear as csi5140_Linear
 from model.layers import ReLU as csi5140_ReLU
+from utils.regularization import csi5140DDropout
+from utils.optim import csi5140Softmax
 class Model(nn.Module):
-    def __init__(self, dropout_p=0):
+    def __init__(self, dropout_p=0, custom_loss=False):
         super().__init__()
+        self.custom_loss = custom_loss
+        if self.custom_loss:
+            self.network = nn.Sequential(
+                csi5140_Conv2d(3, 32, 3, padding=1),
+                nn.BatchNorm2d(32),
+                csi5140_ReLU(),
+                nn.MaxPool2d(2),
 
-        self.network = nn.Sequential(
-            nn.Conv2d(3, 32, 3, padding=1),
-            nn.BatchNorm2d(32),
-            csi5140_ReLU(),
-            nn.MaxPool2d(2),
+                csi5140_Conv2d(32, 64, 3, padding=1),
+                nn.BatchNorm2d(64),
+                csi5140_ReLU(),
+                nn.MaxPool2d(2),
 
-            nn.Conv2d(32, 64, 3, padding=1),
-            nn.BatchNorm2d(64),
-            csi5140_ReLU(),
-            nn.MaxPool2d(2),
+                nn.Flatten(),
+                csi5140_Linear(64 * 8 * 8, 256),
+                csi5140_ReLU(),
+                csi5140DDropout(dropout_p),
+                csi5140_Linear(256, 10),
+                csi5140Softmax()
+            )
+        else:
+            self.network = nn.Sequential(
+                csi5140_Conv2d(3, 32, 3, padding=1),
+                nn.BatchNorm2d(32),
+                csi5140_ReLU(),
+                nn.MaxPool2d(2),
 
-            nn.Flatten(),
-            csi5140_Linear.Linear(64 * 8 * 8, 256),
-            csi5140_ReLU.ReLU(),
-            nn.Dropout(dropout_p),
-            csi5140_Linear.Linear(256, 10)
-        )
+                csi5140_Conv2d(32, 64, 3, padding=1),
+                nn.BatchNorm2d(64),
+                csi5140_ReLU(),
+                nn.MaxPool2d(2),
+
+                nn.Flatten(),
+                csi5140_Linear(64 * 8 * 8, 256),
+                csi5140_ReLU(),
+                csi5140DDropout(dropout_p),
+                csi5140_Linear(256, 10)
+            )
+
 
     def forward(self, x):
         # step through each layer of the network
