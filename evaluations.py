@@ -5,6 +5,7 @@ from utils.regularization import csi5140_cosine_learning_rate_decay as csi5140_c
 from utils.regularization import csi5140_step_learning_rate_decay as csi5140_step
 from utils.optim import csi5140CrossEntropyLoss
 from utils.optim import csi5140Softmax
+from pathlib import Path
 
 def check_accuracy(loader, model, device):
     num_correct = 0
@@ -165,6 +166,7 @@ def train_model(
 import matplotlib.pyplot as plt
 
 def plot_metrics(train_accs, test_accs, costs, title_prefix="Model"):
+    plot_folder = Path('plots/')
     # --- Accuracy Plot ---
     plt.figure()
     plt.plot(range(1, len(train_accs) + 1), train_accs, label="Train Accuracy")
@@ -174,13 +176,20 @@ def plot_metrics(train_accs, test_accs, costs, title_prefix="Model"):
     plt.title(f"{title_prefix} Accuracy vs Epochs")
     plt.legend()
     plt.grid()
+    plt_name = f"{title_prefix}_accuracy_vs_epochs.png"
+    plt.savefig(plot_folder / plt_name)
     plt.show()
 
     # --- Cost Plot ---
+    iterations = [c[0] for c in costs]
+    losses = [c[1] for c in costs]
+
     plt.figure()
-    plt.plot(range(1, len(costs) + 1), costs)
+    plt.plot(iterations, losses)
     plt.xlabel("Iteration")
     plt.ylabel("Cost (Loss)")
     plt.title(f"{title_prefix} Cost vs Iterations")
     plt.grid()
+    plt_name = f"{title_prefix}_cost_vs_iterations.png"
+    plt.savefig(plot_folder / plt_name)
     plt.show()
