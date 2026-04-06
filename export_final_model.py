@@ -4,12 +4,9 @@ from torchvision import datasets
 import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
 from utils.util import get_device
-from evaluations import train_model, plot_metrics
-from model.model import Model
 import os
-from pathlib import Path
 import torch.nn as nn
-import torch.functional as F
+from onnxruntime.quantization import quantize_static, CalibrationDataReader
 
 def check_accuracy(loader, model, device):
     num_correct = 0
@@ -177,11 +174,23 @@ for epoch in range(epochs):
 
     print(f"Epoch {epoch+1}: Loss {avg_loss:.4f}, Train {train_acc:.2f}%, Test {test_acc:.2f}%")
 
-#set model to evalulation mode
 TheModel.eval()
+TheModel.to("cpu")
+inp_tensor = torch.randn(1, 3, 32, 32).to("cpu")
 
-#export model
-inp_tensor = torch.randn(1, 3, 32, 32).to(device)
-onnx_model = torch.onnx.export(model=TheModel, args=(inp_tensor, ), dynamo=True, export_params=True, do_constant_folding=True)
-
-onnx_model.save('rpi_model/csi5140_rpi_model.onnx')
+try:
+    torch.onnx.export(
+        TheModel, 
+        inp_tensor, 
+        "rpi_model/csi5140_rpi_model.onnx",
+        export_params=True, 
+        opset_version=12, # Opset 12 is highly compatible with RPi
+        do_constant_folding=True,
+        input_names=['input'], 
+        output_names=['output'],
+        dynamic_axes={'input': {0: 'batch_size'}, 'output': {0: 'batch_size'}}, 
+        dynamo=False
+    )
+except Exception as e:
+    print (f"exporting model failed: {e}")
+print("complete.")
