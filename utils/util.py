@@ -1,5 +1,7 @@
 import torch
 import matplotlib.pyplot as plt
+from onnxruntime.quantization import CalibrationDataReader
+import numpy as np
 
 def show_random_images(dataset, rows=3, cols=3):
   labels_map = {
@@ -50,3 +52,27 @@ def get_device():
 
     print(f"Set to use device: {device}")
     return device
+
+class OnnxDataLoaderTorch(CalibrationDataReader):
+    """
+    wrap exisitng pytorch dataloader in Onnx calibration loader for static quantization
+    dataloader = pytorch test/train
+    input_name = input from onnx export, input typically in our case
+    """
+    def __init__(self, dataloader, input_name="input"):
+        super().__init__()
+        self.dataloader = iter(dataloader)
+        self.input_name = input_name
+    
+    def get_next(self):
+        try:
+            batch = next(self.dataloader)
+            if isinstance(batch, (list, tuple)):
+                batch = batch[0]
+            data = batch.detach().cpu().numpy()
+            if len(data.shape) == 3:
+                data = np.expand_dims(data, axis=0) # Now [1, C, H, W]
+            return {self.input_name: data}
+        except StopIteration:
+            return None
+

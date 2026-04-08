@@ -6,7 +6,8 @@ import matplotlib.pyplot as plt
 from utils.util import get_device
 import os
 import torch.nn as nn
-from onnxruntime.quantization import quantize_static, CalibrationDataReader
+from onnxruntime.quantization import quantize_static, QuantFormat, QuantType, quant_pre_process
+from utils.util import OnnxDataLoaderTorch
 
 def check_accuracy(loader, model, device):
     num_correct = 0
@@ -178,11 +179,12 @@ TheModel.eval()
 TheModel.to("cpu")
 inp_tensor = torch.randn(1, 3, 32, 32).to("cpu")
 
+uncompressed_model_path = "rpi_model/csi5140_rpi_model.onnx"
 try:
     torch.onnx.export(
         TheModel, 
         inp_tensor, 
-        "rpi_model/csi5140_rpi_model.onnx",
+        uncompressed_model_path,
         export_params=True, 
         opset_version=12, # Opset 12 is highly compatible with RPi
         do_constant_folding=True,
@@ -193,4 +195,32 @@ try:
     )
 except Exception as e:
     print (f"exporting model failed: {e}")
+
+#quantize model
+#preprocess quantization corrects shape errors, merge conv & batchnorm layers...etc
+preprocess_model="rpi_model/csi5140_rpi_model_prep.onnx"
+try:
+    quant_pre_process(
+        input_model=uncompressed_model_path,
+        output_model_path=preprocess_model,
+        skip_optimization=False,
+        auto_merge=False
+    )
+except Exception as e:
+    print (f"unable to pre-process model: error: {e}")
+
+CalibrationData = OnnxDataLoaderTorch(training_data)
+quantized_model_path = "rpi_model/csi5140_rpi_model_8bit.onnx"
+try:
+    quantize_static(
+        model_input=preprocess_model, 
+        model_output=quantized_model_path,
+        calibration_data_reader=CalibrationData, 
+        quant_format=QuantFormat.QDQ, 
+        activation_type=QuantType.QInt8, 
+        weight_type=QuantType.QInt8
+    )
+    print(f"model quantized: new file created: {quantized_model_path}")
+except Exception as e:
+    print(f"unable to quantize model, error: {e}")
 print("complete.")
