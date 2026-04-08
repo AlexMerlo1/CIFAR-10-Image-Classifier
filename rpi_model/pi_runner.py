@@ -1,9 +1,7 @@
 import onnxruntime as ort
-from onnxruntime.quantization import quantize_static, CalibrationDataReader
 import numpy as np
 import torch
 from torchvision import datasets, transforms
-from torch.utils.data import DataLoader
 import time
 import os
 import warnings
