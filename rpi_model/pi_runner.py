@@ -13,10 +13,10 @@ def model_run(model_path):
 
     #optimizations for onnx runner
     options = ort.SessionOptions()
-    options.intra_op_num_threads = os.cpu_count()
-    options.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
-    options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
-    options.add_session_config_entry("session.intra_op.allow_spinning", "1")
+    options.intra_op_num_threads = os.cpu_count() # use all cores
+    options.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL #set model back to sequential execution mode
+    options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL #https://onnxruntime.ai/docs/performance/model-optimizations/graph-optimizations.html
+    options.add_session_config_entry("session.intra_op.allow_spinning", "1") #increases power consumption but keeps threads alive to improve latency. disable for lower power consumption at the cost of slight performance loss.
 
     ### LOAD MODEL TO PI VIA ONNX ###
     #note path to model
