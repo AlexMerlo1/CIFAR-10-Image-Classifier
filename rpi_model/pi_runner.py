@@ -47,7 +47,7 @@ def model_run(model_path):
         correct += (pred == labels.numpy()).sum()
         total += labels.size(0)
     print(model_path)
-    print(f"RPI Deployred Accuracy: {100 * correct / total:.2f}%")
+    print(f"RPI Deployed Accuracy: {100 * correct / total:.2f}%")
     avg_latency = np.mean(latencies)
     fps = 1000 / avg_latency if avg_latency > 0 else 0
 
