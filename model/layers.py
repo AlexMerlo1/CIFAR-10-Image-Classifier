@@ -30,7 +30,6 @@ class Conv2d(nn.Module):
             math.sqrt(2 / (in_channels * kernel_size * kernel_size))
         ) # (out_channels, in_channels, kernel_size, kernel_size) 
         self.bias = nn.Parameter(torch.zeros(out_channels))
-        
     def forward(self, x):
         batch_size, in_channels, H, W = x.shape
         H_out = math.floor((H + 2*self.padding - self.kernel_size) / self.stride) + 1

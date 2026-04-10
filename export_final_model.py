@@ -3,6 +3,7 @@ from torch.utils.data import Dataset
 from torchvision import datasets
 import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
+from evaluations import plot_metrics
 from utils.util import get_device
 import os
 import torch.nn as nn
@@ -66,13 +67,13 @@ test_data = datasets.CIFAR10(
 )
 
 #dynamic worker allocation
-workers = os.cpu_count()
+workers = 0
 print(f"Setting number of workers to available CPU cores: {workers}")
 
 from torch.utils.data import DataLoader
 batch_size = 128
-train_loader = torch.utils.data.DataLoader(training_data, batch_size=batch_size, shuffle=True, num_workers=workers, pin_memory=True, persistent_workers=True)
-test_loader = torch.utils.data.DataLoader(test_data, batch_size=batch_size, shuffle=False, num_workers=workers, pin_memory=True, persistent_workers=True)
+train_loader = torch.utils.data.DataLoader(training_data, batch_size=batch_size, shuffle=True, num_workers=workers, pin_memory=True, persistent_workers=False)
+test_loader = torch.utils.data.DataLoader(test_data, batch_size=batch_size, shuffle=False, num_workers=workers, pin_memory=True, persistent_workers=False)
 
 device = get_device()
 
@@ -123,7 +124,7 @@ class CSI5140_final_model(nn.Module):
 
 #initialize model
 TheModel = CSI5140_final_model().to(device)
-epochs = 100
+epochs = 3
 criterion = nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(
             TheModel.parameters(),
@@ -178,14 +179,27 @@ TheModel.eval()
 TheModel.to("cpu")
 inp_tensor = torch.randn(1, 3, 32, 32).to("cpu")
 
+# SAVE BASELINE MODEL
+os.makedirs("saved_models", exist_ok=True)
+torch.save(TheModel.state_dict(), "saved_models/baseline_model.pth")
+print("Baseline model saved.")
+# SAVE METRICS
+metrics = {
+    "train_accs": train_accs,
+    "test_accs": test_accs,
+    "train_costs": train_costs
+}
+torch.save(metrics, "saved_models/baseline_metrics.pth")
+print("Metrics saved.")
+
 try:
     torch.onnx.export(
         TheModel, 
         inp_tensor, 
-        "rpi_model/csi5140_rpi_model.onnx",
+        "rpi_model/csi5140_rpi_model_low_epochs.onnx",
         export_params=True, 
         opset_version=12, # Opset 12 is highly compatible with RPi
-        do_constant_folding=True,
+        # do_constant_folding=True,
         input_names=['input'], 
         output_names=['output'],
         dynamic_axes={'input': {0: 'batch_size'}, 'output': {0: 'batch_size'}}, 
