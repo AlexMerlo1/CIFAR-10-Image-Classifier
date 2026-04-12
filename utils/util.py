@@ -16,11 +16,26 @@ from thop import profile
 from tqdm import tqdm
 import math 
 
-def get_model_size_gb(model):
-    param_size = sum(p.nelement() * p.element_size() for p in model.parameters())
+def get_model_size_mb(model, nonzero_params=None, dtype_bytes=4):
+    """
+    If nonzero_params is provided -> estimates compressed sparse size
+    dtype_bytes:
+        float32 = 4
+        float16 = 2
+        int8    = 1
+    """
+
+    if nonzero_params is None:
+        # fallback (original behavior)
+        param_size = sum(p.nelement() * p.element_size() for p in model.parameters())
+    else:
+        # compressed estimate
+        param_size = nonzero_params * dtype_bytes
+
     buffer_size = sum(b.nelement() * b.element_size() for b in model.buffers())
-    size_all_gb = (param_size + buffer_size) / (1024**3)
-    return size_all_gb
+
+    size_all_mb = (param_size + buffer_size) / (1024**2)
+    return size_all_mb
 
 def show_random_images(dataset, rows=3, cols=3):
   labels_map = {
@@ -98,7 +113,7 @@ class OnnxDataLoaderTorch(CalibrationDataReader):
 
 def test_diff_prune_models(csi_model, device, train_loader, test_loader, pytorch_model_path):
     amounts = [0,.3,.5,.7,.75,.8,.85,.9]
-    length = math.exp(len(amounts), 3)
+    length = len(amounts) ** 3
 
     records = []  # for DataFrame
     best_acc = -1
@@ -114,6 +129,7 @@ def test_diff_prune_models(csi_model, device, train_loader, test_loader, pytorch
         model.load_state_dict(
             torch.load(pytorch_model_path + "/baseline_model.pth", map_location=device)
         )
+
 
         # collect layers
         conv_layers = []
@@ -137,15 +153,26 @@ def test_diff_prune_models(csi_model, device, train_loader, test_loader, pytorch
         if len(linear_layers) > 0 and an1 > 0:
             prune.ln_structured(linear_layers[0], "weight", an1, dim=0, n=float("-inf"))
             prune.remove(linear_layers[0], "weight")
+        nonzero_params = 0
+        total_params = 0
 
+        for p in model.parameters():
+            total_params += p.numel()
+            nonzero_params += torch.count_nonzero(p).item()
         # evaluate
         train_acc = check_accuracy(train_loader, model, device)
         test_acc = check_accuracy(test_loader, model, device)
-        model_size = get_model_size_gb(model)
+        effective_model_size_mb = get_model_size_mb(
+            model,
+            nonzero_params=nonzero_params,
+            dtype_bytes=4
+        )
 
         dummy = torch.randn(1, 3, 32, 32).to(device)
         macs, parameters = profile(model, inputs=(dummy,))
+        sparsity = 1 - (nonzero_params / total_params)
         flops = macs * 2 
+        sparsity_adjusted_flops = flops * (1 - sparsity)
 
         # store row
         records.append({
@@ -155,10 +182,10 @@ def test_diff_prune_models(csi_model, device, train_loader, test_loader, pytorch
             "an1": an1,
             "train_accuracy": train_acc,
             "test_accuracy": test_acc,
-            "model_size_gb": model_size,
+            "nonzero_parameters": nonzero_params,
             "num_parameters": parameters, 
-            "macs": macs, 
-            "flops": flops
+            "effective_model_size_mb": effective_model_size_mb,
+            "sparsity_adjusted_flops": sparsity_adjusted_flops
         })
 
         # track best
@@ -172,10 +199,10 @@ def test_diff_prune_models(csi_model, device, train_loader, test_loader, pytorch
                 "an1": an1,
                 "train_accuracy": train_acc,
                 "test_accuracy": test_acc,
-                "model_size_gb": model_size,
+                "nonzero_parameters": nonzero_params,
                 "num_parameters": parameters, 
-                "macs": macs, 
-                "flops": flops
+                "effective_model_size_mb": effective_model_size_mb,
+                "sparsity_adjusted_flops": sparsity_adjusted_flops
             }
 
     # create DataFrame
