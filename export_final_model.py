@@ -12,10 +12,12 @@ import psutil
 from pathlib import Path
 from evaluations import check_accuracy
 from utils.util import test_diff_prune_models, build_pruned_model_for_export
+from torchviz import make_dot
 
 
 force_training = False #set this to true to force the model to retrain, otherwise if model parameters exist it will use those.
 skip_prune_study = True #skips prune study
+skip_plot_network = True #requires graphviz to be installed on your machine, plot is in /plots folder
 
 class CSI5140_final_model(nn.Module):
     def __init__(self):
@@ -200,6 +202,20 @@ if __name__ == "__main__":
         except Exception as e:
             print(f"Failed to save torch model: {e}")
     
+    #visualize model
+    if not skip_plot_network:
+        try:
+            inp_tensor = torch.randn(1, 3, 32, 32).to(device)
+            out_tensor = TheModel(inp_tensor)
+            dot = make_dot(out_tensor, params=dict(TheModel.named_parameters()))
+            dot.format = 'png'
+            dot.render("plots/csi5140_model_network_graph")
+            print("Neural Network Graph plotted to plots/csi5140_model_network_graph.png")
+        except Exception as e:
+            print(f"plotting neural network graph failed: {e}")
+            pass
+    else: 
+        print("skipping network graph plot")
     #test pruning
     if not(skip_prune_study):
         df, best_model, best_config = test_diff_prune_models(

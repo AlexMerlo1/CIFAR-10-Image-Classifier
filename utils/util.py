@@ -14,7 +14,8 @@ import torch
 import itertools
 from thop import profile
 from tqdm import tqdm
-import math 
+
+
 
 def get_model_size_mb(model, nonzero_params=None, dtype_bytes=4):
     """
@@ -120,7 +121,7 @@ def test_diff_prune_models(csi_model, device, train_loader, test_loader, pytorch
     best_model = None
     best_config = None
 
-    for cn1, cn2, an1 in tqdm(itertools.product(amounts, repeat=3), total=length, mininterval=0.5):
+    for cn1, cn2, an1 in tqdm(itertools.product(amounts, repeat=3), total=length, mininterval=0.5, position=0, leave=True):
 
         name = f"cn1_{cn1}_cn2_{cn2}_an1_{an1}"
 
@@ -129,7 +130,6 @@ def test_diff_prune_models(csi_model, device, train_loader, test_loader, pytorch
         model.load_state_dict(
             torch.load(pytorch_model_path + "/baseline_model.pth", map_location=device)
         )
-
 
         # collect layers
         conv_layers = []
@@ -180,12 +180,12 @@ def test_diff_prune_models(csi_model, device, train_loader, test_loader, pytorch
             "cn1": cn1,
             "cn2": cn2,
             "an1": an1,
-            "train_accuracy": train_acc,
-            "test_accuracy": test_acc,
+            "train_accuracy": round(train_acc,2),
+            "test_accuracy": round(test_acc, 2),
             "nonzero_parameters": nonzero_params,
             "num_parameters": parameters, 
-            "effective_model_size_mb": effective_model_size_mb,
-            "sparsity_adjusted_flops": sparsity_adjusted_flops
+            "effective_model_size_mb": round(effective_model_size_mb,2),
+            "sparsity_adjusted_flops": round(sparsity_adjusted_flops, 2)
         })
 
         # track best
@@ -197,12 +197,12 @@ def test_diff_prune_models(csi_model, device, train_loader, test_loader, pytorch
                 "cn1": cn1,
                 "cn2": cn2,
                 "an1": an1,
-                "train_accuracy": train_acc,
-                "test_accuracy": test_acc,
+                "train_accuracy": round(train_acc,2),
+                "test_accuracy": round(test_acc,2),
                 "nonzero_parameters": nonzero_params,
                 "num_parameters": parameters, 
-                "effective_model_size_mb": effective_model_size_mb,
-                "sparsity_adjusted_flops": sparsity_adjusted_flops
+                "effective_model_size_mb": round(effective_model_size_mb,2),
+                "sparsity_adjusted_flops": round(sparsity_adjusted_flops,2)
             }
 
     # create DataFrame
