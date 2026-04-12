@@ -120,7 +120,7 @@ def test_diff_prune_models(csi_model, device, train_loader, test_loader, pytorch
     best_model = None
     best_config = None
 
-    for cn1, cn2, an1 in tqdm(itertools.product(amounts, repeat=3), total=(len(amounts)*3), mininterval=0.5):
+    for cn1, cn2, an1 in tqdm(itertools.product(amounts, repeat=3), total=length, mininterval=0.5):
 
         name = f"cn1_{cn1}_cn2_{cn2}_an1_{an1}"
 
