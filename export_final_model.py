@@ -11,9 +11,11 @@ from utils.util import OnnxDataLoaderTorch
 import psutil
 from pathlib import Path
 from evaluations import check_accuracy
-from utils.util import test_diff_prune_models
+from utils.util import test_diff_prune_models, build_pruned_model_for_export
+
 
 force_training = False #set this to true to force the model to retrain, otherwise if model parameters exist it will use those.
+skip_prune_study = False #skips prune study
 
 class CSI5140_final_model(nn.Module):
     def __init__(self):
@@ -199,17 +201,20 @@ if __name__ == "__main__":
             print(f"Failed to save torch model: {e}")
     
     #test pruning
-    df, best_model, best_config = test_diff_prune_models(
-        CSI5140_final_model,
-        device,
-        train_loader,
-        test_loader,
-        torch_metrics_folder
-    )
+    if not(skip_prune_study):
+        df, best_model, best_config = test_diff_prune_models(
+            CSI5140_final_model,
+            device,
+            train_loader,
+            test_loader,
+            torch_metrics_folder
+        )
 
-    print(df.sort_values(by="test_accuracy", ascending=False).head(5))
-    print("\nBEST CONFIG:")
-    print(best_config)
+        print(df.sort_values(by="test_accuracy", ascending=False).head(5))
+        print("\nBEST CONFIG:")
+        print(best_config)
+    else:
+        print("skipped pruning study")
 
         #TODO: to handle the best model, push to ONNX
 
@@ -270,3 +275,23 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"unable to quantize model, error: {e}")
     print("complete.")
+
+    TheModel_pruned = build_pruned_model_for_export(CSI5140_final_model, "cpu", torch_metrics_folder)
+    #export ONNX pruned
+    pruned_model_path = (onnx_export_folder + "/csi5140_rpi_model_pruned.onnx")
+    try:
+        torch.onnx.export(
+            TheModel_pruned, 
+            inp_tensor, 
+            pruned_model_path,
+            export_params=True, 
+            opset_version=12, # Opset 12 is highly compatible with RPi
+            do_constant_folding=True,
+            input_names=['input'], 
+            output_names=['output'],
+            dynamic_axes={'input': {0: 'batch_size'}, 'output': {0: 'batch_size'}}, 
+            dynamo=False
+        )
+        print(f"Pruned ONNX Model Exported to: {pruned_model_path}")
+    except Exception as e:
+        print (f"exporting model failed: {e}")

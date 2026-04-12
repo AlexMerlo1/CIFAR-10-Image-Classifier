@@ -7,6 +7,20 @@ import numpy as np
 from torch.nn.utils import prune
 import torch.nn as nn
 from evaluations import check_accuracy
+import pandas as pd
+from torch.nn.utils import prune
+import torch.nn as nn
+import torch
+import itertools
+from thop import profile
+from tqdm import tqdm
+import math 
+
+def get_model_size_gb(model):
+    param_size = sum(p.nelement() * p.element_size() for p in model.parameters())
+    buffer_size = sum(b.nelement() * b.element_size() for b in model.buffers())
+    size_all_gb = (param_size + buffer_size) / (1024**3)
+    return size_all_gb
 
 def show_random_images(dataset, rows=3, cols=3):
   labels_map = {
@@ -82,21 +96,16 @@ class OnnxDataLoaderTorch(CalibrationDataReader):
             return None
 
 
-import pandas as pd
-from torch.nn.utils import prune
-import torch.nn as nn
-import torch
-import itertools
-
 def test_diff_prune_models(csi_model, device, train_loader, test_loader, pytorch_model_path):
     amounts = [0,.3,.5,.7,.75,.8,.85,.9]
+    length = math.exp(len(amounts), 3)
 
     records = []  # for DataFrame
     best_acc = -1
     best_model = None
     best_config = None
 
-    for cn1, cn2, an1 in itertools.product(amounts, repeat=3):
+    for cn1, cn2, an1 in tqdm(itertools.product(amounts, repeat=3), total=(len(amounts)*3), mininterval=0.5):
 
         name = f"cn1_{cn1}_cn2_{cn2}_an1_{an1}"
 
@@ -132,6 +141,11 @@ def test_diff_prune_models(csi_model, device, train_loader, test_loader, pytorch
         # evaluate
         train_acc = check_accuracy(train_loader, model, device)
         test_acc = check_accuracy(test_loader, model, device)
+        model_size = get_model_size_gb(model)
+
+        dummy = torch.randn(1, 3, 32, 32).to(device)
+        macs, parameters = profile(model, inputs=(dummy,))
+        flops = macs * 2 
 
         # store row
         records.append({
@@ -140,7 +154,11 @@ def test_diff_prune_models(csi_model, device, train_loader, test_loader, pytorch
             "cn2": cn2,
             "an1": an1,
             "train_accuracy": train_acc,
-            "test_accuracy": test_acc
+            "test_accuracy": test_acc,
+            "model_size_gb": model_size,
+            "num_parameters": parameters, 
+            "macs": macs, 
+            "flops": flops
         })
 
         # track best
@@ -153,10 +171,42 @@ def test_diff_prune_models(csi_model, device, train_loader, test_loader, pytorch
                 "cn2": cn2,
                 "an1": an1,
                 "train_accuracy": train_acc,
-                "test_accuracy": test_acc
+                "test_accuracy": test_acc,
+                "model_size_gb": model_size,
+                "num_parameters": parameters, 
+                "macs": macs, 
+                "flops": flops
             }
 
     # create DataFrame
     df = pd.DataFrame(records)
     df.to_csv("pruning_study_results.csv", index=False)
     return df, best_model, best_config
+
+
+def build_pruned_model_for_export(csi_model, device, pytorch_model_path):
+    # fresh model
+    model = csi_model().to(device)
+    model.load_state_dict(
+        torch.load(pytorch_model_path + "/baseline_model.pth", map_location=device)
+    )
+
+    # collect layers
+    conv_layers = []
+    linear_layers = []
+
+    for module in model.modules():
+        if isinstance(module, nn.Conv2d):
+            conv_layers.append(module)
+        elif isinstance(module, nn.Linear):
+            linear_layers.append(module)
+
+    # apply pruning
+    prune.ln_structured(conv_layers[0], "weight", 0, dim=0, n=float("-inf"))
+    prune.remove(conv_layers[0], "weight")
+    prune.ln_structured(conv_layers[1], "weight", 0, dim=0, n=float("-inf"))
+    prune.remove(conv_layers[1], "weight")
+    prune.ln_structured(linear_layers[0], "weight", 0.8, dim=0, n=float("-inf"))
+    prune.remove(linear_layers[0], "weight")
+
+    return model
