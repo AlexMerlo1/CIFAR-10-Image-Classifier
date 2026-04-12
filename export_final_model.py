@@ -13,6 +13,8 @@ from pathlib import Path
 from evaluations import check_accuracy
 from utils.util import test_diff_prune_models
 
+force_training = False #set this to true to force the model to retrain, otherwise if model parameters exist it will use those.
+
 class CSI5140_final_model(nn.Module):
     def __init__(self):
         super(CSI5140_final_model, self).__init__()
@@ -137,9 +139,8 @@ if __name__ == "__main__":
     torch_metrics_folder = "pytorch_model_metrics"
     torch_metrics_path = Path(torch_metrics_folder)
     torch_metrics_path.mkdir(exist_ok=True)
-    #TODO: create logic that looks for model parameters or manual override for training "-train", otherwise skip training.
     existing_model = Path(torch_metrics_folder + "/baseline_model.pth")
-    if existing_model.is_file():
+    if existing_model.is_file() and not(force_training):
         print(f"model data exists in file: {str(existing_model)}, skipping training")
     else:
         for epoch in range(epochs):
