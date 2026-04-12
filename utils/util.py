@@ -2,6 +2,9 @@ import torch
 import matplotlib.pyplot as plt
 from onnxruntime.quantization import CalibrationDataReader
 import numpy as np
+from torch.nn.utils import prune
+import torch.nn as nn
+from evaluations import check_accuracy
 
 def show_random_images(dataset, rows=3, cols=3):
   labels_map = {
@@ -76,3 +79,45 @@ class OnnxDataLoaderTorch(CalibrationDataReader):
         except StopIteration:
             return None
 
+
+
+def test_diff_prune_models(csi_model, device, train_loader, test_loader, pytorch_model_path):
+    amounts = [0.0, 0.3, 0.5, 0.7]
+    results = {}
+
+    for conv_amt in amounts:
+        for linear_amt in amounts:
+            name = f"conv_{conv_amt}_linear_{linear_amt}"
+
+            # fresh model every time
+            model = csi_model().to(device)
+            model.load_state_dict(torch.load(pytorch_model_path + "/baseline_model.pth"))
+
+            # apply pruning
+            for module in model.modules():
+                if isinstance(module, nn.Conv2d) and conv_amt > 0:
+                    prune.ln_structured(module, "weight", conv_amt, dim=0, n=float("-inf"))
+                elif isinstance(module, nn.Linear) and linear_amt > 0:
+                    prune.ln_structured(module, "weight", linear_amt, dim=0, n=float("-inf"))
+
+            # finalize pruning
+            for module in model.modules():
+                if isinstance(module, (nn.Conv2d, nn.Linear)):
+                    try:
+                        prune.remove(module, "weight")
+                    except:
+                        pass
+
+            # evaluate
+            train_acc = check_accuracy(train_loader, model, device)
+            test_acc = check_accuracy(test_loader, model, device)
+
+            results[name] = {
+                "conv_amt": conv_amt,
+                "linear_amt": linear_amt,
+                "train_accuracy": train_acc,
+                "test_accuracy": test_acc,
+                "model": model 
+            }
+
+    return results

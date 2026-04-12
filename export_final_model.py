@@ -10,27 +10,8 @@ from onnxruntime.quantization import quantize_static, QuantFormat, QuantType, qu
 from utils.util import OnnxDataLoaderTorch
 import psutil
 from pathlib import Path
-
-def check_accuracy(loader, model, device):
-    num_correct = 0
-    num_samples = 0
-    model.eval()
-    
-    with torch.no_grad():
-        for x, y in loader:
-            x = x.to(device)
-            y = y.to(device)
-
-            scores = model(x)
-            _, predictions = scores.max(1)
-
-            num_correct += (predictions == y).sum().item()
-            num_samples += predictions.size(0)
-    
-    acc = num_correct / num_samples * 100
-
-    model.train()
-    return acc  
+from evaluations import check_accuracy
+from utils.util import test_diff_prune_models
 
 class CSI5140_final_model(nn.Module):
     def __init__(self):
@@ -152,61 +133,75 @@ if __name__ == "__main__":
     test_accs = []
     train_costs = []
     iteration = 0
-    for epoch in range(epochs):
-        TheModel.train()
-        correct = 0
-        total = 0
-        epoch_loss = 0
-        for images, labels in train_loader:
-            images = images.to(device, non_blocking=True)
-            labels = labels.to(device, non_blocking=True)
+    #check for trained model data 
+    torch_metrics_folder = "pytorch_model_metrics"
+    torch_metrics_path = Path(torch_metrics_folder)
+    torch_metrics_path.mkdir(exist_ok=True)
+    #TODO: create logic that looks for model parameters or manual override for training "-train", otherwise skip training.
+    existing_model = Path(torch_metrics_folder + "/baseline_model.pth")
+    if existing_model.is_file():
+        print(f"model data exists in file: {str(existing_model)}, skipping training")
+    else:
+        for epoch in range(epochs):
+            TheModel.train()
+            correct = 0
+            total = 0
+            epoch_loss = 0
+            for images, labels in train_loader:
+                images = images.to(device, non_blocking=True)
+                labels = labels.to(device, non_blocking=True)
 
-            optimizer.zero_grad() # Set gradients back to 0
+                optimizer.zero_grad() # Set gradients back to 0
 
-            outputs = TheModel(images)
-            loss = criterion(outputs, labels)
+                outputs = TheModel(images)
+                loss = criterion(outputs, labels)
 
-            loss.backward() # Backprop
-            optimizer.step() # Update weights
+                loss.backward() # Backprop
+                optimizer.step() # Update weights
 
-            train_costs.append((iteration,round(loss.item(), 4)))
-            epoch_loss += loss.item()
-            iteration += 1
-            
-            _, predicted = torch.max(outputs, 1) # Get best class for every sample
-            total += labels.size(0)
-            correct += (predicted == labels).sum().item()
+                train_costs.append((iteration,round(loss.item(), 4)))
+                epoch_loss += loss.item()
+                iteration += 1
+                
+                _, predicted = torch.max(outputs, 1) # Get best class for every sample
+                total += labels.size(0)
+                correct += (predicted == labels).sum().item()
 
-        train_acc = 100 * correct / total
-        test_acc = check_accuracy(test_loader, TheModel, device)
-        avg_loss = epoch_loss / len(train_loader)
+            train_acc = 100 * correct / total
+            test_acc = check_accuracy(test_loader, TheModel, device)
+            avg_loss = epoch_loss / len(train_loader)
 
-        train_accs.append(round(train_acc, 4))
-        test_accs.append(round(test_acc, 4))
+            train_accs.append(round(train_acc, 4))
+            test_accs.append(round(test_acc, 4))
 
-        scheduler.step()
+            scheduler.step()
 
-        print(f"Epoch {epoch+1}: Loss {avg_loss:.4f}, Train {train_acc:.2f}%, Test {test_acc:.2f}%")
+            print(f"Epoch {epoch+1}: Loss {avg_loss:.4f}, Train {train_acc:.2f}%, Test {test_acc:.2f}%")
+
+        try:
+            torch.save(TheModel.state_dict(), (torch_metrics_folder + "/baseline_model.pth"))
+            metrics = {
+                "train_accs": train_accs,
+                "test_accs": test_accs,
+                "train_costs": train_costs
+            }
+            torch.save(metrics, (torch_metrics_folder + "/baseline_metrics.pth"))
+            print(f"Baseline PyTorch Model & Baseline Metrics Saved To: {torch_metrics_folder}")
+        except Exception as e:
+            print(f"Failed to save torch model: {e}")
+    
+    #test pruning
+    results = test_diff_prune_models(CSI5140_final_model, device, train_loader, test_loader, torch_metrics_folder)
+    for name, data in results.items():
+        print(f"\n{name}")
+        print(f"  Conv: {data['conv_amt']}")
+        print(f"  Linear: {data['linear_amt']}")
+        print(f"  Accuracy: {data['test_accuracy']:.2f}%")
+        #TODO: to handle the best model, push to ONNX
 
     TheModel.eval()
     TheModel.to("cpu") #forcing model back to CPU to prevent issues with ONNX export.
     inp_tensor = torch.randn(1, 3, 32, 32).to("cpu")
-
-    #export pytorch model information
-    torch_metrics_folder = "pytorch_model_metrics"
-    torch_metrics_path = Path(torch_metrics_folder)
-    torch_metrics_path.mkdir(exist_ok=True)
-    try:
-        torch.save(TheModel.state_dict(), (torch_metrics_folder + "/baseline_model.pth"))
-        metrics = {
-            "train_accs": train_accs,
-            "test_accs": test_accs,
-            "train_costs": train_costs
-        }
-        torch.save(metrics, (torch_metrics_folder + "/baseline_metrics.pth"))
-        print(f"Baseline PyTorch Model & Baseline Metrics Saved To: {torch_metrics_folder}")
-    except Exception as e:
-        print(f"Failed to save torch model: {e}")
 
     #export ONNX models 
     onnx_export_folder = "rpi_model"
