@@ -158,5 +158,5 @@ def test_diff_prune_models(csi_model, device, train_loader, test_loader, pytorch
 
     # create DataFrame
     df = pd.DataFrame(records)
-
+    df.to_csv("results.csv", index=False)
     return df, best_model, best_config
