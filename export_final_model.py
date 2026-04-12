@@ -192,12 +192,18 @@ if __name__ == "__main__":
             print(f"Failed to save torch model: {e}")
     
     #test pruning
-    results = test_diff_prune_models(CSI5140_final_model, device, train_loader, test_loader, torch_metrics_folder)
-    for name, data in results.items():
-        print(f"\n{name}")
-        print(f"  Conv: {data['conv_amt']}")
-        print(f"  Linear: {data['linear_amt']}")
-        print(f"  Accuracy: {data['test_accuracy']:.2f}%")
+    df, best_model, best_config = test_diff_prune_models(
+        CSI5140_final_model,
+        device,
+        train_loader,
+        test_loader,
+        torch_metrics_folder
+    )
+
+    print(df.sort_values(by="test_accuracy", ascending=False).head(5))
+    print("\nBEST CONFIG:")
+    print(best_config)
+
         #TODO: to handle the best model, push to ONNX
 
     TheModel.eval()

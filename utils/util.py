@@ -1,3 +1,5 @@
+import itertools
+
 import torch
 import matplotlib.pyplot as plt
 from onnxruntime.quantization import CalibrationDataReader
@@ -80,44 +82,81 @@ class OnnxDataLoaderTorch(CalibrationDataReader):
             return None
 
 
+import pandas as pd
+from torch.nn.utils import prune
+import torch.nn as nn
+import torch
+import itertools
 
 def test_diff_prune_models(csi_model, device, train_loader, test_loader, pytorch_model_path):
-    amounts = [0.0, 0.3, 0.5, 0.7]
-    results = {}
+    amounts = [0,.3,.5,.7,.75,.8,.85,.9]
 
-    for conv_amt in amounts:
-        for linear_amt in amounts:
-            name = f"conv_{conv_amt}_linear_{linear_amt}"
+    records = []  # for DataFrame
+    best_acc = -1
+    best_model = None
+    best_config = None
 
-            # fresh model every time
-            model = csi_model().to(device)
-            model.load_state_dict(torch.load(pytorch_model_path + "/baseline_model.pth"))
+    for cn1, cn2, an1 in itertools.product(amounts, repeat=3):
 
-            # apply pruning
-            for module in model.modules():
-                if isinstance(module, nn.Conv2d) and conv_amt > 0:
-                    prune.ln_structured(module, "weight", conv_amt, dim=0, n=float("-inf"))
-                elif isinstance(module, nn.Linear) and linear_amt > 0:
-                    prune.ln_structured(module, "weight", linear_amt, dim=0, n=float("-inf"))
+        name = f"cn1_{cn1}_cn2_{cn2}_an1_{an1}"
 
-            # finalize pruning
-            for module in model.modules():
-                if isinstance(module, (nn.Conv2d, nn.Linear)):
-                    try:
-                        prune.remove(module, "weight")
-                    except:
-                        pass
+        # fresh model
+        model = csi_model().to(device)
+        model.load_state_dict(
+            torch.load(pytorch_model_path + "/baseline_model.pth", map_location=device)
+        )
 
-            # evaluate
-            train_acc = check_accuracy(train_loader, model, device)
-            test_acc = check_accuracy(test_loader, model, device)
+        # collect layers
+        conv_layers = []
+        linear_layers = []
 
-            results[name] = {
-                "conv_amt": conv_amt,
-                "linear_amt": linear_amt,
+        for module in model.modules():
+            if isinstance(module, nn.Conv2d):
+                conv_layers.append(module)
+            elif isinstance(module, nn.Linear):
+                linear_layers.append(module)
+
+        # apply pruning
+        if len(conv_layers) > 0 and cn1 > 0:
+            prune.ln_structured(conv_layers[0], "weight", cn1, dim=0, n=float("-inf"))
+            prune.remove(conv_layers[0], "weight")
+
+        if len(conv_layers) > 1 and cn2 > 0:
+            prune.ln_structured(conv_layers[1], "weight", cn2, dim=0, n=float("-inf"))
+            prune.remove(conv_layers[1], "weight")
+
+        if len(linear_layers) > 0 and an1 > 0:
+            prune.ln_structured(linear_layers[0], "weight", an1, dim=0, n=float("-inf"))
+            prune.remove(linear_layers[0], "weight")
+
+        # evaluate
+        train_acc = check_accuracy(train_loader, model, device)
+        test_acc = check_accuracy(test_loader, model, device)
+
+        # store row
+        records.append({
+            "name": name,
+            "cn1": cn1,
+            "cn2": cn2,
+            "an1": an1,
+            "train_accuracy": train_acc,
+            "test_accuracy": test_acc
+        })
+
+        # track best
+        if test_acc > best_acc:
+            best_acc = test_acc
+            best_model = model
+            best_config = {
+                "name": name,
+                "cn1": cn1,
+                "cn2": cn2,
+                "an1": an1,
                 "train_accuracy": train_acc,
-                "test_accuracy": test_acc,
-                "model": model 
+                "test_accuracy": test_acc
             }
 
-    return results
+    # create DataFrame
+    df = pd.DataFrame(records)
+
+    return df, best_model, best_config
