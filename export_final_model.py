@@ -15,7 +15,7 @@ from utils.util import test_diff_prune_models, build_pruned_model_for_export
 
 
 force_training = False #set this to true to force the model to retrain, otherwise if model parameters exist it will use those.
-skip_prune_study = False #skips prune study
+skip_prune_study = True #skips prune study
 
 class CSI5140_final_model(nn.Module):
     def __init__(self):
@@ -276,6 +276,7 @@ if __name__ == "__main__":
         print(f"unable to quantize model, error: {e}")
     print("complete.")
 
+    #initialize pruned model class instance
     TheModel_pruned = build_pruned_model_for_export(CSI5140_final_model, "cpu", torch_metrics_folder)
     #export ONNX pruned
     pruned_model_path = (onnx_export_folder + "/csi5140_rpi_model_pruned.onnx")
@@ -295,3 +296,33 @@ if __name__ == "__main__":
         print(f"Pruned ONNX Model Exported to: {pruned_model_path}")
     except Exception as e:
         print (f"exporting model failed: {e}")
+
+    #quantize pruned model
+    #preprocess pruning model corrects shape errors, merge conv & batchnorm layers...etc
+    preprocess_pruned_model= (onnx_export_folder + "/csi5140_rpi_model_prep_pruned.onnx")
+    try:
+        quant_pre_process(
+            input_model=pruned_model_path,
+            output_model_path=preprocess_pruned_model,
+            skip_optimization=False,
+            auto_merge=True
+        )
+        print(f"Preprocessed Pruned ONNX Quantization Model Exported to: {preprocess_pruned_model}")
+    except Exception as e:
+        print (f"unable to pre-process pruned model: error: {e}")
+
+    CalibrationData = OnnxDataLoaderTorch(training_data)
+    quantized_pruned_model_path = (onnx_export_folder + "/csi5140_rpi_model_8bit_pruned.onnx")
+    try:
+        quantize_static(
+            model_input=preprocess_pruned_model, 
+            model_output=quantized_pruned_model_path,
+            calibration_data_reader=CalibrationData, 
+            quant_format=QuantFormat.QDQ, 
+            activation_type=QuantType.QInt8, 
+            weight_type=QuantType.QInt8
+        )
+        print(f"8Bit Int Pruned ONNX Quantized Model Exported to: {quantized_pruned_model_path}")
+    except Exception as e:
+        print(f"unable to quantize pruned model, error: {e}")
+    print("complete.")
