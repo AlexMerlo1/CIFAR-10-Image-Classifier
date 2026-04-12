@@ -5,6 +5,7 @@ from torchvision import datasets, transforms
 import time
 import os
 import warnings
+import pandas as pd
 
 #quiet warnings
 warnings.filterwarnings("ignore")
@@ -47,12 +48,22 @@ def model_run(model_path):
         correct += (pred == labels.numpy()).sum()
         total += labels.size(0)
     print(model_path)
-    print(f"RPI Deployed Accuracy: {100 * correct / total:.2f}%")
-    avg_latency = np.mean(latencies)
-    fps = 1000 / avg_latency if avg_latency > 0 else 0
+    acc = round(100 * correct / total, 2)
+    print(f"RPI Deployed Accuracy: {acc}%")
+    avg_latency = round(np.mean(latencies), 2)
+    fps = round(1000 / avg_latency, 2) if avg_latency > 0 else 0
 
-    print(f"Average Latency: {avg_latency:.2f} ms")
-    print(f"Frames Per Second (FPS): {fps:.2f}")    
+    print(f"Average Latency: {avg_latency} ms")
+    print(f"Frames Per Second (FPS): {fps}")    
+
+    records = {
+        "name" : model_path,
+        "acc_ms" : acc,
+        "avg_latency_ms" : avg_latency,
+        "fps" : fps
+    }
+
+    return records
 
 # CIFAR-10 normalization stats
 cifar_mean = [0.485, 0.456, 0.406]
@@ -80,9 +91,20 @@ if __name__ == "__main__":
     quantized_8bit = "rpi_model/csi5140_rpi_model_8bit.onnx"
     pruned_uncompressed_model = "rpi_model/csi5140_rpi_model_pruned.onnx"
     pruned_8bit_model = "rpi_model/csi5140_rpi_model_8bit_pruned.onnx"
+    try:
+        print("running models")
+        #run models, get stats
+        rpi_model_stats = []
+        rpi_model_stats.append(model_run(uncompressed_model))
+        rpi_model_stats.append(model_run(quantized_8bit))
+        rpi_model_stats.append(model_run(pruned_uncompressed_model))
+        rpi_model_stats.append(model_run(pruned_8bit_model))
 
-    #run models
-    model_run(uncompressed_model)
-    model_run(quantized_8bit)
-    model_run(pruned_uncompressed_model)
-    model_run(pruned_8bit_model)
+        #print stats datadframe
+        stats_file="rpi_onnx_model_results.csv"
+        print(f"Printing model stats to: {stats_file}")
+        df = pd.DataFrame(rpi_model_stats)
+        df.to_csv("rpi_onnx_model_results.csv", index=False)
+        print("complete")
+    except Exception as e:
+        print ("failed to generate stats: {e}")
