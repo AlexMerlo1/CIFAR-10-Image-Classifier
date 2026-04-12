@@ -2,6 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FuncFormatter
 from pathlib import Path
+from utils.util import get_model_size_mb
 def save_graph(filename, folder="plots/compression_metrics_plots", dpi=300):
     """
     Saves the current matplotlib figure.
@@ -21,6 +22,8 @@ def save_graph(filename, folder="plots/compression_metrics_plots", dpi=300):
 
 df = pd.read_csv("pruning_study_results.csv")
 
+
+# ======== Pruning vs Accuracy ======== 
 df_simple = df[(df["cn1"] == 0) & (df["cn2"] == 0)]
 
 plt.plot(
@@ -43,6 +46,8 @@ save_graph("an1_pruning_effect.png")
 
 plt.show()
 
+# ======== FLOPs vs Accuracy ======== 
+
 plt.figure()
 
 plt.plot(
@@ -63,4 +68,105 @@ plt.title("Effect of Linear Layer Pruning (FLOPs vs Accuracy)")
 
 save_graph("an1_flops_vs_accuracy.png")
 
+plt.show()
+
+# ======== Quantized vs Pruned vs Baseline ======== 
+
+# pruned (an1 = 0.8)
+pruned_model = df[
+    (df["cn1"] == 0) &
+    (df["cn2"] == 0) &
+    (df["an1"] == 0.8)
+]
+pruned_row = pruned_model.iloc[0]
+
+# baseline (no pruning)
+baseline_model = df[
+    (df["cn1"] == 0) &
+    (df["cn2"] == 0) &
+    (df["an1"] == 0)
+]
+baseline_row = baseline_model.iloc[0]
+
+# sizes
+baseline_fp32 = get_model_size_mb(None, baseline_row["nonzero_parameters"], dtype_bytes=4)
+baseline_int8 = get_model_size_mb(None, baseline_row["nonzero_parameters"], dtype_bytes=1)
+
+pruned_fp32 = get_model_size_mb(None, pruned_row["nonzero_parameters"], dtype_bytes=4)
+pruned_int8 = get_model_size_mb(None, pruned_row["nonzero_parameters"], dtype_bytes=1)
+
+# plot
+plt.figure()
+
+labels = [
+    "Baseline (FP32)",
+    "Baseline (INT8)",
+    "Pruned (FP32)",
+    "Pruned (INT8)"
+]
+
+sizes = [
+    baseline_fp32,
+    baseline_int8,
+    pruned_fp32,
+    pruned_int8
+]
+
+plt.bar(labels, sizes)
+
+plt.ylabel("Model Size (MB)")
+plt.title("Model Size Comparison (Baseline vs Pruning vs Quantization)")
+
+# value labels
+for i, v in enumerate(sizes):
+    plt.text(i, v, f"{v:.2f} MB", ha='center', va='bottom')
+
+save_graph("model_size_comparison_full.png")
+
+plt.show()
+
+
+# ======== RPI Model Performance Comparison ======== 
+
+df_models = pd.read_csv("rpi_onnx_model_results.csv")
+
+# clean model names (optional, nicer labels)
+df_models["Model"] = df_models["name"].apply(lambda x: 
+    "Baseline" if "8bit" not in x and "pruned" not in x else
+    "Quantized (INT8)" if "8bit" in x and "pruned" not in x else
+    "Pruned" if "pruned" in x and "8bit" not in x else
+    "Pruned + Quantized"
+)
+plt.figure()
+plt.bar(df_models["Model"], df_models["avg_latency_ms"])
+plt.ylabel("Latency (ms)")
+plt.title("Model Latency Comparison")
+
+for i, v in enumerate(df_models["avg_latency_ms"]):
+    plt.text(i, v, f"{v:.2f}", ha='center', va='bottom')
+
+save_graph("model_latency_comparison.png")
+plt.show()
+plt.figure()
+plt.bar(df_models["Model"], df_models["acc_ms"])
+plt.ylabel("Test Accuracy (%)")
+plt.title("Model Accuracy Comparison")
+
+for i, v in enumerate(df_models["acc_ms"]):
+    plt.text(i, v, f"{v:.2f}%", ha='center', va='bottom')
+
+save_graph("model_accuracy_comparison.png")
+plt.show()
+plt.figure()
+
+plt.scatter(df_models["avg_latency_ms"], df_models["acc_ms"])
+
+for i, row in df_models.iterrows():
+    plt.text(row["avg_latency_ms"], row["acc_ms"], row["Model"])
+
+plt.xlabel("Latency (ms)")
+plt.ylabel("Test Accuracy (%)")
+plt.title("Latency vs Accuracy Tradeoff")
+
+save_graph("latency_vs_accuracy.png")
 plt.show()

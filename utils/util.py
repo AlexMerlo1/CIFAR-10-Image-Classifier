@@ -28,11 +28,12 @@ def get_model_size_mb(model, nonzero_params=None, dtype_bytes=4):
     if nonzero_params is None:
         # fallback (original behavior)
         param_size = sum(p.nelement() * p.element_size() for p in model.parameters())
+        buffer_size = sum(b.nelement() * b.element_size() for b in model.buffers())
     else:
         # compressed estimate
         param_size = nonzero_params * dtype_bytes
+        buffer_size = 0 
 
-    buffer_size = sum(b.nelement() * b.element_size() for b in model.buffers())
 
     size_all_mb = (param_size + buffer_size) / (1024**2)
     return size_all_mb
