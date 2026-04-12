@@ -141,7 +141,14 @@ if __name__ == "__main__":
     torch_metrics_path.mkdir(exist_ok=True)
     existing_model = Path(torch_metrics_folder + "/baseline_model.pth")
     if existing_model.is_file() and not(force_training):
-        print(f"model data exists in file: {str(existing_model)}, skipping training")
+        try:
+            print(f"model data exists in file: {str(existing_model)}, loading model, skipping training")
+            TheModel.load_state_dict(
+                torch.load((torch_metrics_folder + "/baseline_model.pth"), map_location=device)
+            )
+            print(f"model loaded: {(torch_metrics_folder + "/baseline_model.pth")}")
+        except Exception as e:
+            print(f"failed to load model: {e}")
     else:
         for epoch in range(epochs):
             TheModel.train()
