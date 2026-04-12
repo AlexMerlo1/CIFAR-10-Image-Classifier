@@ -1,0 +1,5 @@
+name,acc_ms,avg_latency_ms,fps
+rpi_model/csi5140_rpi_model.onnx,82.71,49.68,20.13
+rpi_model/csi5140_rpi_model_8bit.onnx,82.29,9.43,106.04
+rpi_model/csi5140_rpi_model_pruned.onnx,77.36,28.98,34.51
+rpi_model/csi5140_rpi_model_8bit_pruned.onnx,77.01,9.59,104.28
