@@ -78,8 +78,11 @@ test_loader = torch.utils.data.DataLoader(test_data, batch_size=batch_size, shuf
 if __name__ == "__main__":
     uncompressed_model = "rpi_model/csi5140_rpi_model.onnx"
     quantized_8bit = "rpi_model/csi5140_rpi_model_8bit.onnx"
+    pruned_uncompressed_model = "rpi_model/csi5140_rpi_model_pruned.onnx"
+    pruned_8bit_model = "rpi_model/csi5140_rpi_model_8bit_pruned.onnx"
 
     #run models
     model_run(uncompressed_model)
     model_run(quantized_8bit)
-
+    model_run(pruned_uncompressed_model)
+    model_run(pruned_8bit_model)
