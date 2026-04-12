@@ -1,7 +1,6 @@
 data/
 *.tar.gz
 *.pt
-*.pth
 __pycache__/
 data/cifar-10-python.tar.gz
 data/cifar-10-batches-py/batches.meta
