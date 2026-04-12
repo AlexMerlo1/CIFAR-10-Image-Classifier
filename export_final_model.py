@@ -15,9 +15,9 @@ from utils.util import test_diff_prune_models, build_pruned_model_for_export
 from torchviz import make_dot
 
 
-force_training = False #set this to true to force the model to retrain, otherwise if model parameters exist it will use those.
-skip_prune_study = True #skips prune study
-skip_plot_network = True #requires graphviz to be installed on your machine, plot is in /plots folder
+force_training = True #set this to true to force the model to retrain, otherwise if model parameters exist it will use those.
+skip_prune_study = False #skips prune study
+skip_plot_network = False #requires graphviz to be installed on your machine, plot is in /plots folder
 
 class CSI5140_final_model(nn.Module):
     def __init__(self):
