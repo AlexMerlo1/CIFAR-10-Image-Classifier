@@ -166,7 +166,8 @@ def train_model(
 import matplotlib.pyplot as plt
 
 def plot_metrics(train_accs, test_accs, costs, title_prefix="Model"):
-    plot_folder = Path('plots/')
+    plot_folder = Path('plots/compression_plots')
+    plot_folder.mkdir(exist_ok=True)
     # --- Accuracy Plot ---
     plt.figure()
     plt.plot(range(1, len(train_accs) + 1), train_accs, label="Train Accuracy")
@@ -193,3 +194,5 @@ def plot_metrics(train_accs, test_accs, costs, title_prefix="Model"):
     plt_name = f"{title_prefix}_cost_vs_iterations.png"
     plt.savefig(plot_folder / plt_name)
     plt.show()
+
+
