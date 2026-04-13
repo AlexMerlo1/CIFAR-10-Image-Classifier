@@ -15,9 +15,10 @@ from utils.util import test_diff_prune_models, build_pruned_model_for_export
 from torchviz import make_dot
 
 
-force_training = False #set this to true to force the model to retrain, otherwise if model parameters exist it will use those.
-skip_prune_study = True #skips prune study
+force_training = True #set this to true to force the model to retrain, otherwise if model parameters exist it will use those.
+skip_prune_study = False #skips prune study
 skip_plot_network = True #requires graphviz to be installed on your machine, plot is in /plots folder
+skip_onnx_export = False #skip exporting onnx models
 
 class CSI5140_final_model(nn.Module):
     def __init__(self):
@@ -232,113 +233,114 @@ if __name__ == "__main__":
     else:
         print("skipped pruning study")
 
-        #TODO: to handle the best model, push to ONNX
+    if not skip_onnx_export:
+        TheModel.eval()
+        TheModel.to("cpu") #forcing model back to CPU to prevent issues with ONNX export.
+        inp_tensor = torch.randn(1, 3, 32, 32).to("cpu")
 
-    TheModel.eval()
-    TheModel.to("cpu") #forcing model back to CPU to prevent issues with ONNX export.
-    inp_tensor = torch.randn(1, 3, 32, 32).to("cpu")
+        #export ONNX models 
+        onnx_export_folder = "rpi_model"
+        onnx_export_path = Path(onnx_export_folder)
+        onnx_export_path.mkdir(exist_ok=True)
 
-    #export ONNX models 
-    onnx_export_folder = "rpi_model"
-    onnx_export_path = Path(onnx_export_folder)
-    onnx_export_path.mkdir(exist_ok=True)
+        #export baseline uncompressed model
+        uncompressed_model_path = (onnx_export_folder + "/csi5140_rpi_model.onnx")
+        try:
+            torch.onnx.export(
+                TheModel, 
+                inp_tensor, 
+                uncompressed_model_path,
+                export_params=True, 
+                opset_version=12, # Opset 12 is highly compatible with RPi
+                do_constant_folding=False,
+                input_names=['input'], 
+                output_names=['output'],
+                dynamic_axes={'input': {0: 'batch_size'}, 'output': {0: 'batch_size'}}, 
+                dynamo=False
+            )
+            print(f"Baseline ONNX Model Exported to: {uncompressed_model_path}")
+        except Exception as e:
+            print (f"exporting model failed: {e}")
 
-    #export baseline uncompressed model
-    uncompressed_model_path = (onnx_export_folder + "/csi5140_rpi_model.onnx")
-    try:
-        torch.onnx.export(
-            TheModel, 
-            inp_tensor, 
-            uncompressed_model_path,
-            export_params=True, 
-            opset_version=12, # Opset 12 is highly compatible with RPi
-            do_constant_folding=False,
-            input_names=['input'], 
-            output_names=['output'],
-            dynamic_axes={'input': {0: 'batch_size'}, 'output': {0: 'batch_size'}}, 
-            dynamo=False
-        )
-        print(f"Baseline ONNX Model Exported to: {uncompressed_model_path}")
-    except Exception as e:
-        print (f"exporting model failed: {e}")
+        #quantize model
+        #preprocess quantization corrects shape errors, merge conv & batchnorm layers...etc
+        preprocess_model= (onnx_export_folder + "/csi5140_rpi_model_prep.onnx")
+        try:
+            quant_pre_process(
+                input_model=uncompressed_model_path,
+                output_model_path=preprocess_model,
+                skip_optimization=False,
+                auto_merge=False
+            )
+            print(f"Preprocessed ONNX Quantization Model Exported to: {preprocess_model}")
+        except Exception as e:
+            print (f"unable to pre-process model: error: {e}")
 
-    #quantize model
-    #preprocess quantization corrects shape errors, merge conv & batchnorm layers...etc
-    preprocess_model= (onnx_export_folder + "/csi5140_rpi_model_prep.onnx")
-    try:
-        quant_pre_process(
-            input_model=uncompressed_model_path,
-            output_model_path=preprocess_model,
-            skip_optimization=False,
-            auto_merge=False
-        )
-        print(f"Preprocessed ONNX Quantization Model Exported to: {preprocess_model}")
-    except Exception as e:
-        print (f"unable to pre-process model: error: {e}")
+        CalibrationData = OnnxDataLoaderTorch(training_data)
+        quantized_model_path = (onnx_export_folder + "/csi5140_rpi_model_8bit.onnx")
+        try:
+            quantize_static(
+                model_input=preprocess_model, 
+                model_output=quantized_model_path,
+                calibration_data_reader=CalibrationData, 
+                quant_format=QuantFormat.QDQ, 
+                activation_type=QuantType.QInt8, 
+                weight_type=QuantType.QInt8
+            )
+            print(f"8Bit Int ONNX Quantized Model Exported to: {quantized_model_path}")
+        except Exception as e:
+            print(f"unable to quantize model, error: {e}")
+        print("complete.")
 
-    CalibrationData = OnnxDataLoaderTorch(training_data)
-    quantized_model_path = (onnx_export_folder + "/csi5140_rpi_model_8bit.onnx")
-    try:
-        quantize_static(
-            model_input=preprocess_model, 
-            model_output=quantized_model_path,
-            calibration_data_reader=CalibrationData, 
-            quant_format=QuantFormat.QDQ, 
-            activation_type=QuantType.QInt8, 
-            weight_type=QuantType.QInt8
-        )
-        print(f"8Bit Int ONNX Quantized Model Exported to: {quantized_model_path}")
-    except Exception as e:
-        print(f"unable to quantize model, error: {e}")
-    print("complete.")
+        #initialize pruned model class instance
+        TheModel_pruned = build_pruned_model_for_export(CSI5140_final_model, "cpu", torch_metrics_folder)
+        #export ONNX pruned
+        pruned_model_path = (onnx_export_folder + "/csi5140_rpi_model_pruned.onnx")
+        try:
+            torch.onnx.export(
+                TheModel_pruned, 
+                inp_tensor, 
+                pruned_model_path,
+                export_params=True, 
+                opset_version=12, # Opset 12 is highly compatible with RPi
+                do_constant_folding=False,
+                input_names=['input'], 
+                output_names=['output'],
+                dynamic_axes={'input': {0: 'batch_size'}, 'output': {0: 'batch_size'}}, 
+                dynamo=False
+            )
+            print(f"Pruned ONNX Model Exported to: {pruned_model_path}")
+        except Exception as e:
+            print (f"exporting model failed: {e}")
 
-    #initialize pruned model class instance
-    TheModel_pruned = build_pruned_model_for_export(CSI5140_final_model, "cpu", torch_metrics_folder)
-    #export ONNX pruned
-    pruned_model_path = (onnx_export_folder + "/csi5140_rpi_model_pruned.onnx")
-    try:
-        torch.onnx.export(
-            TheModel_pruned, 
-            inp_tensor, 
-            pruned_model_path,
-            export_params=True, 
-            opset_version=12, # Opset 12 is highly compatible with RPi
-            do_constant_folding=False,
-            input_names=['input'], 
-            output_names=['output'],
-            dynamic_axes={'input': {0: 'batch_size'}, 'output': {0: 'batch_size'}}, 
-            dynamo=False
-        )
-        print(f"Pruned ONNX Model Exported to: {pruned_model_path}")
-    except Exception as e:
-        print (f"exporting model failed: {e}")
+        #quantize pruned model
+        #preprocess pruning model corrects shape errors, merge conv & batchnorm layers...etc
+        preprocess_pruned_model= (onnx_export_folder + "/csi5140_rpi_model_prep_pruned.onnx")
+        try:
+            quant_pre_process(
+                input_model=pruned_model_path,
+                output_model_path=preprocess_pruned_model,
+                skip_optimization=False,
+                auto_merge=False
+            )
+            print(f"Preprocessed Pruned ONNX Quantization Model Exported to: {preprocess_pruned_model}")
+        except Exception as e:
+            print (f"unable to pre-process pruned model: error: {e}")
 
-    #quantize pruned model
-    #preprocess pruning model corrects shape errors, merge conv & batchnorm layers...etc
-    preprocess_pruned_model= (onnx_export_folder + "/csi5140_rpi_model_prep_pruned.onnx")
-    try:
-        quant_pre_process(
-            input_model=pruned_model_path,
-            output_model_path=preprocess_pruned_model,
-            skip_optimization=False,
-            auto_merge=False
-        )
-        print(f"Preprocessed Pruned ONNX Quantization Model Exported to: {preprocess_pruned_model}")
-    except Exception as e:
-        print (f"unable to pre-process pruned model: error: {e}")
-
-    CalibrationData = OnnxDataLoaderTorch(training_data)
-    quantized_pruned_model_path = (onnx_export_folder + "/csi5140_rpi_model_8bit_pruned.onnx")
-    try:
-        quantize_static(
-            model_input=preprocess_pruned_model, 
-            model_output=quantized_pruned_model_path,
-            calibration_data_reader=CalibrationData, 
-            quant_format=QuantFormat.QDQ, 
-            activation_type=QuantType.QInt8, 
-            weight_type=QuantType.QInt8
-        )
-        print(f"8Bit Int Pruned ONNX Quantized Model Exported to: {quantized_pruned_model_path}")
-    except Exception as e:
-        print(f"unable to quantize pruned model, error: {e}")
+        CalibrationData = OnnxDataLoaderTorch(training_data)
+        quantized_pruned_model_path = (onnx_export_folder + "/csi5140_rpi_model_8bit_pruned.onnx")
+        try:
+            quantize_static(
+                model_input=preprocess_pruned_model, 
+                model_output=quantized_pruned_model_path,
+                calibration_data_reader=CalibrationData, 
+                quant_format=QuantFormat.QDQ, 
+                activation_type=QuantType.QInt8, 
+                weight_type=QuantType.QInt8
+            )
+            print(f"8Bit Int Pruned ONNX Quantized Model Exported to: {quantized_pruned_model_path}")
+        except Exception as e:
+            print(f"unable to quantize pruned model, error: {e}")
+    else:
+        print("skipping ONNX model exports")
     print("complete.")
