@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import FuncFormatter
 from pathlib import Path
 from utils.util import get_model_size_mb
+import numpy as np
 def save_graph(filename, folder="plots/compression_metrics_plots", dpi=300):
     """
     Saves the current matplotlib figure.
@@ -169,4 +170,60 @@ plt.ylabel("Test Accuracy (%)")
 plt.title("Latency vs Accuracy Tradeoff")
 
 save_graph("latency_vs_accuracy.png")
+plt.show()
+
+models = ["Baseline", "Pruned"]
+
+fps_no_quant = [
+    df[df["name"].str.contains("rpi_model.onnx")]["fps"].values[0],
+    df[df["name"].str.contains("pruned.onnx") & ~df["name"].str.contains("8bit")]["fps"].values[0]
+]
+
+fps_quant = [
+    df[df["name"].str.contains("8bit.onnx") & ~df["name"].str.contains("pruned")]["fps"].values[0],
+    df[df["name"].str.contains("8bit_pruned")]["fps"].values[0]
+]
+
+x = np.arange(len(models))
+width = 0.35
+
+plt.figure()
+
+plt.bar(x - width/2, fps_no_quant, width, label="FP32")
+plt.bar(x + width/2, fps_quant, width, label="INT8 Quantized")
+
+plt.xticks(x, models)
+plt.ylabel("Frames Per Second (FPS)")
+plt.title("Impact of Quantization on Throughput (FPS)")
+
+# annotate
+for i in range(len(models)):
+    plt.text(x[i] - width/2, fps_no_quant[i], f"{fps_no_quant[i]:.2f}", ha='center', va='bottom')
+    plt.text(x[i] + width/2, fps_quant[i], f"{fps_quant[i]:.2f}", ha='center', va='bottom')
+
+plt.legend()
+
+save_graph("quantization_fps_comparison.png")
+plt.show()
+
+# isolate ONLY conv1 pruning 
+df_conv1 = df[
+    (df["cn2"] == 0) &
+    (df["an1"] == 0)
+].sort_values("cn1")
+
+plt.figure()
+
+plt.plot(
+    df_conv1["cn1"],
+    df_conv1["test_accuracy"],
+    marker="o"
+)
+
+plt.xlabel("Conv1 Pruning Amount")
+plt.ylabel("Test Accuracy (%)")
+plt.title("Effect of Conv1 Pruning on Accuracy")
+
+
+save_graph("cn1_pruning_vs_accuracy.png")
 plt.show()
