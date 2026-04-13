@@ -15,9 +15,9 @@ from utils.util import test_diff_prune_models, build_pruned_model_for_export
 from torchviz import make_dot
 
 
-force_training = True #set this to true to force the model to retrain, otherwise if model parameters exist it will use those.
-skip_prune_study = False #skips prune study
-skip_plot_network = False #requires graphviz to be installed on your machine, plot is in /plots folder
+force_training = False #set this to true to force the model to retrain, otherwise if model parameters exist it will use those.
+skip_prune_study = True #skips prune study
+skip_plot_network = True #requires graphviz to be installed on your machine, plot is in /plots folder
 
 class CSI5140_final_model(nn.Module):
     def __init__(self):
@@ -252,7 +252,7 @@ if __name__ == "__main__":
             uncompressed_model_path,
             export_params=True, 
             opset_version=12, # Opset 12 is highly compatible with RPi
-            do_constant_folding=True,
+            do_constant_folding=False,
             input_names=['input'], 
             output_names=['output'],
             dynamic_axes={'input': {0: 'batch_size'}, 'output': {0: 'batch_size'}}, 
@@ -303,7 +303,7 @@ if __name__ == "__main__":
             pruned_model_path,
             export_params=True, 
             opset_version=12, # Opset 12 is highly compatible with RPi
-            do_constant_folding=True,
+            do_constant_folding=False,
             input_names=['input'], 
             output_names=['output'],
             dynamic_axes={'input': {0: 'batch_size'}, 'output': {0: 'batch_size'}}, 
@@ -321,7 +321,7 @@ if __name__ == "__main__":
             input_model=pruned_model_path,
             output_model_path=preprocess_pruned_model,
             skip_optimization=False,
-            auto_merge=True
+            auto_merge=False
         )
         print(f"Preprocessed Pruned ONNX Quantization Model Exported to: {preprocess_pruned_model}")
     except Exception as e:
